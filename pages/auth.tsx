@@ -1,24 +1,57 @@
+// pages/auth.tsx
 import React, { useState } from 'react';
-import { Input } from "./components/ui/input";
-import { Button } from "./components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
+import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
-const AuthPage = () => {
+const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('');
+  const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic
-    console.log('Login:', { email, password });
+    const result = await signIn('credentials', {
+      redirect: false,
+      email,
+      password,
+    });
+    if (result?.ok) {
+      router.push('/dashboard');
+    } else {
+      console.error('Login failed:', result?.error);
+    }
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle signup logic
-    console.log('Signup:', { email, password, role });
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Save user role to MongoDB
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ uid: user.uid, email: user.email, role }),
+      });
+
+      if (response.ok) {
+        router.push('/dashboard');
+      } else {
+        console.error('Failed to save user role');
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+    }
   };
 
   return (

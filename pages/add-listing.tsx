@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Input } from "./components/ui/input";
 import { Button } from "./components/ui/button";
@@ -56,6 +56,8 @@ const TimePicker = ({ value, onChange }) => {
 
 
 const AddListingForm = () => {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [listingType, setListingType] = useState('');
   const [formData, setFormData] = useState({
@@ -124,10 +126,50 @@ const AddListingForm = () => {
     setFormData(prevData => ({ ...prevData, images: Array.from(e.target.files) }));
   };
 
-  const handleSubmit = (e) => {
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      checkUserRole();
+    } else if (status === 'unauthenticated') {
+      router.push('/auth');
+    }
+  }, [status]);
+
+  const checkUserRole = async () => {
+    const response = await fetch(`/api/users?uid=${session.user.uid}`);
+    if (response.ok) {
+      const userData = await response.json();
+      if (userData.role !== 'provider') {
+        router.push('/dashboard');
+      }
+    } else {
+      console.error('Failed to fetch user role');
+      router.push('/dashboard');
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(formData);
-    // Handle form submission (e.g., send data to backend)
+    try {
+      const response = await fetch('/api/listings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          userId: session.user.uid,
+        }),
+      });
+
+      if (response.ok) {
+        router.push('/dashboard');
+      } else {
+        console.error('Failed to add listing');
+      }
+    } catch (error) {
+      console.error('Error adding listing:', error);
+    }
   };
 
   const renderTypeSelection = () => (

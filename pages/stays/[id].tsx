@@ -1,9 +1,22 @@
-// pages/stays/[id].js
+// pages/stays/[id].tsx
+import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { StayListing } from '../components/SingleListingPage';
-import { mockStayListing } from '../data/mockData';
+import { StayListing } from '../../components/SingleListingPage';
+import clientPromise from '../../lib/mongodb';
+import { ObjectId } from 'mongodb';
 
-export default function StayPage({ stay }) {
+interface Stay {
+  _id: string;
+  title: string;
+  description: string;
+  // Add other stay properties here
+}
+
+interface StayPageProps {
+  stay: Stay | null;
+}
+
+export default function StayPage({ stay }: StayPageProps) {
   const router = useRouter();
 
   if (router.isFallback) {
@@ -17,12 +30,14 @@ export default function StayPage({ stay }) {
   return <StayListing stay={stay} />;
 }
 
-export async function getServerSideProps({ params }) {
-  // In a real application, you would fetch the data from an API here
-  // For now, we'll use the mock data
-  const stay = mockStayListing;
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { id } = context.params as { id: string };
 
-  // If the stay doesn't exist, return notFound
+  const client = await clientPromise;
+  const db = client.db();
+
+  const stay = await db.collection('listings').findOne({ _id: new ObjectId(id), type: 'stay' });
+
   if (!stay) {
     return {
       notFound: true,
@@ -31,7 +46,7 @@ export async function getServerSideProps({ params }) {
 
   return {
     props: {
-      stay,
+      stay: JSON.parse(JSON.stringify(stay)),
     },
   };
-}
+};

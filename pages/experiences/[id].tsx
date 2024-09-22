@@ -1,10 +1,22 @@
-// pages/experiences/[id].js
+// pages/experiences/[id].tsx
+import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { ExperienceListing } from '../components/SingleListingPage';
-import { mockExperienceListing } from '../data/mockData';
+import { ExperienceListing } from '../../components/SingleListingPage';
+import clientPromise from '../../lib/mongodb';
+import { ObjectId } from 'mongodb';
 
+interface Experience {
+  _id: string;
+  title: string;
+  description: string;
+  // Add other experience properties here
+}
 
-export default function ExperiencePage({ experience }) {
+interface ExperiencePageProps {
+  experience: Experience | null;
+}
+
+export default function ExperiencePage({ experience }: ExperiencePageProps) {
   const router = useRouter();
 
   if (router.isFallback) {
@@ -18,12 +30,14 @@ export default function ExperiencePage({ experience }) {
   return <ExperienceListing experience={experience} />;
 }
 
-export async function getServerSideProps({ params }) {
-  // In a real application, you would fetch the data from an API here
-  // For now, we'll use the mock data
-  const experience = mockExperienceListing;
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { id } = context.params as { id: string };
 
-  // If the experience doesn't exist, return notFound
+  const client = await clientPromise;
+  const db = client.db();
+
+  const experience = await db.collection('listings').findOne({ _id: new ObjectId(id), type: 'experience' });
+
   if (!experience) {
     return {
       notFound: true,
@@ -32,7 +46,7 @@ export async function getServerSideProps({ params }) {
 
   return {
     props: {
-      experience,
+      experience: JSON.parse(JSON.stringify(experience)),
     },
   };
-}
+};

@@ -1,9 +1,22 @@
+// pages/services/[id].tsx
+import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { ServiceListing } from '../components/SingleListingPage';
-import { mockServiceListing } from '../data/mockData';
+import { ServiceListing } from '../../components/SingleListingPage';
+import clientPromise from '../../lib/mongodb';
+import { ObjectId } from 'mongodb';
 
+interface Service {
+  _id: string;
+  title: string;
+  description: string;
+  // Add other service properties here
+}
 
-export default function ServicePage({ service }) {
+interface ServicePageProps {
+  service: Service | null;
+}
+
+export default function ServicePage({ service }: ServicePageProps) {
   const router = useRouter();
 
   if (router.isFallback) {
@@ -17,12 +30,14 @@ export default function ServicePage({ service }) {
   return <ServiceListing service={service} />;
 }
 
-export async function getServerSideProps({ params }) {
-  // In a real application, you would fetch the data from an API here
-  // For now, we'll use the mock data
-  const service = mockServiceListing;
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { id } = context.params as { id: string };
 
-  // If the service doesn't exist, return notFound
+  const client = await clientPromise;
+  const db = client.db();
+
+  const service = await db.collection('listings').findOne({ _id: new ObjectId(id), type: 'service' });
+
   if (!service) {
     return {
       notFound: true,
@@ -31,7 +46,7 @@ export async function getServerSideProps({ params }) {
 
   return {
     props: {
-      service,
+      service: JSON.parse(JSON.stringify(service)),
     },
   };
-}
+};

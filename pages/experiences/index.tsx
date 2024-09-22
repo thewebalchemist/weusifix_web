@@ -1,194 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Checkbox } from '../components/ui/checkbox';
-import { Search } from 'lucide-react';
-import { mockExperienceListing } from '../data/mockData';
+// pages/experiences.tsx
+import { GetServerSideProps } from 'next';
+import { useRouter } from 'next/router';
+import { Heart } from 'lucide-react';
+import { Button } from "../components/ui/button";
+import clientPromise from '../lib/mongodb';
 
-const ITEMS_PER_PAGE = 12;
+interface Experience {
+  _id: string;
+  title: string;
+  description: string;
+  location: string;
+  price: number;
+  images: string[];
+}
 
-const ExperiencesPage = () => {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchLocation, setSearchLocation] = useState('');
-    const [date, setDate] = useState('');
-    const [guests, setGuests] = useState(1);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [filteredListings, setFilteredListings] = useState([]);
-    const [filters, setFilters] = useState({
-        outdoor: false,
-        culinary: false,
-        cultural: false,
-        wellness: false,
-    });
+interface ExperiencesPageProps {
+  experiences: Experience[];
+}
 
-    useEffect(() => {
-        if (Array.isArray(mockExperienceListing)) {
-            const filtered = mockExperienceListing.filter(experience => 
-            (searchQuery === '' || experience.title.toLowerCase().includes(searchQuery.toLowerCase())) &&
-            (searchLocation === '' || experience.location.toLowerCase().includes(searchLocation.toLowerCase())) &&
-            (date === '' || new Date(experience.availableDates).some(d => d.toDateString() === new Date(date).toDateString())) &&
-            (guests <= experience.maxGroupSize) &&
-            ((!filters.outdoor && !filters.culinary && !filters.cultural && !filters.wellness) ||
-            (filters.outdoor && experience.category === 'Outdoor Adventure') ||
-            (filters.culinary && experience.category === 'Culinary Experience') ||
-            (filters.cultural && experience.category === 'Cultural Experience') ||
-            (filters.wellness && experience.category === 'Wellness'))
-        );
-        setFilteredListings(filtered);
-        setCurrentPage(1);
-    }
-    else {
-        console.error('mockEventListing is not an array:', mockExperienceListing);
-        setFilteredListings([]);
-    }
-    }, [searchQuery, searchLocation, date, guests, filters]);
+const ExperiencesPage: React.FC<ExperiencesPageProps> = ({ experiences }) => {
+  const router = useRouter();
 
-    const handleSearch = (e) => {
-        e.preventDefault();
-        // Search is handled by the useEffect hook
+  const renderExperienceCard = (experience: Experience) => {
+    const handleCardClick = () => {
+      router.push(`/experiences/${experience._id}`);
     };
-
-    const handleFilterChange = (filterName) => {
-        setFilters(prevFilters => ({
-            ...prevFilters,
-            [filterName]: !prevFilters[filterName]
-        }));
-    };
-
-    const pageCount = Math.ceil(filteredListings.length / ITEMS_PER_PAGE);
-    const currentListings = filteredListings.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
-    );
 
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                {/* Search Form Section */}
-                <div className="px-4 py-8 sm:px-0">
-                    <div className="rounded-lg bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
-                        <div className="px-4 py-5 sm:p-6">
-                            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Find Experiences</h2>
-                            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
-                                <Input
-                                    type="text"
-                                    placeholder="Experience Name"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="flex-grow"
-                                />
-                                <Input
-                                    type="text"
-                                    placeholder="Location"
-                                    value={searchLocation}
-                                    onChange={(e) => setSearchLocation(e.target.value)}
-                                    className="flex-grow"
-                                />
-                                <Input
-                                    type="date"
-                                    placeholder="Date"
-                                    value={date}
-                                    onChange={(e) => setDate(e.target.value)}
-                                    className="flex-grow"
-                                />
-                                <Input
-                                    type="number"
-                                    placeholder="Guests"
-                                    value={guests}
-                                    onChange={(e) => setGuests(e.target.valueAsNumber)}
-                                    className="flex-grow"
-                                />
-                                <Button type="submit" className="w-full sm:w-auto">
-                                    <Search className="mr-2 h-4 w-4" /> Search
-                                </Button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="flex flex-col md:flex-row gap-8">
-                    {/* Filters */}
-                    <div className="md:w-1/4">
-                        <h2 className="text-xl font-semibold mb-4">Filters</h2>
-                        <div className="space-y-2">
-                            <div className="flex items-center">
-                                <Checkbox 
-                                    id="outdoor" 
-                                    checked={filters.outdoor}
-                                    onCheckedChange={() => handleFilterChange('outdoor')}
-                                />
-                                <label htmlFor="outdoor" className="ml-2">Outdoor Adventure</label>
-                            </div>
-                            <div className="flex items-center">
-                                <Checkbox 
-                                    id="culinary" 
-                                    checked={filters.culinary}
-                                    onCheckedChange={() => handleFilterChange('culinary')}
-                                />
-                                <label htmlFor="culinary" className="ml-2">Culinary Experience</label>
-                            </div>
-                            <div className="flex items-center">
-                                <Checkbox 
-                                    id="cultural" 
-                                    checked={filters.cultural}
-                                    onCheckedChange={() => handleFilterChange('cultural')}
-                                />
-                                <label htmlFor="cultural" className="ml-2">Cultural Experience</label>
-                            </div>
-                            <div className="flex items-center">
-                                <Checkbox 
-                                    id="wellness" 
-                                    checked={filters.wellness}
-                                    onCheckedChange={() => handleFilterChange('wellness')}
-                                />
-                                <label htmlFor="wellness" className="ml-2">Wellness</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Listings */}
-                    <div className="md:w-3/4">
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Browse Experiences</h1>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {currentListings.map((listing) => (
-                                <Card key={listing.id}>
-                                    <CardHeader>
-                                        <img src={listing.images[0]} alt={listing.title} className="w-full h-48 object-cover rounded-t-lg" />
-                                    </CardHeader>
-                                    <CardContent>
-                                        <CardTitle>{listing.title}</CardTitle>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">{listing.category}</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">{listing.location}</p>
-                                        <p className="text-sm font-bold">${listing.price} / person</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Duration: {listing.duration}</p>
-                                    </CardContent>
-                                    <CardFooter>
-                                        <Button variant="outline" className="w-full">View Details</Button>
-                                    </CardFooter>
-                                </Card>
-                            ))}
-                        </div>
-
-                        {/* Pagination */}
-                        <div className="mt-8 flex justify-center">
-                            <div className="join">
-                                {[...Array(pageCount)].map((_, index) => (
-                                    <Button
-                                        key={index}
-                                        className={`join-item ${currentPage === index + 1 ? 'btn-active' : ''}`}
-                                        onClick={() => setCurrentPage(index + 1)}
-                                    >
-                                        {index + 1}
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+      <div key={experience._id} className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" onClick={handleCardClick}>
+        <div className="absolute inset-0">
+          <img 
+            src={experience.images[0]} 
+            alt={experience.title} 
+            className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" 
+          />
         </div>
+        <div className="absolute top-0 left-0 right-0 p-4 ">
+          <div className="flex justify-between items-center">
+            <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
+              Experience
+            </span>
+            <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-700 bg-opacity-80'><Heart className='h-4 w-4' /></span>
+          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 bg-gray-600 bg-opacity-80 p-4 rounded-b-2xl">
+          <h2 className="text-white text-lg font-semibold mb-1">{experience.title}</h2>
+          <p className="mb-2 text-gray-200 text-sm">{experience.location}</p>
+          <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
+            <span className="font-bold">${experience.price}/</span> person
+          </span>
+        </div>
+      </div>
     );
+  };
+
+  return (
+    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Experiences</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {experiences.map(renderExperienceCard)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  const client = await clientPromise;
+  const db = client.db();
+
+  const experiences = await db.collection('listings').find({ type: 'experience' }).toArray();
+
+  return {
+    props: {
+      experiences: JSON.parse(JSON.stringify(experiences)),
+    },
+  };
 };
 
 export default ExperiencesPage;

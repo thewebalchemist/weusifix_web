@@ -1,13 +1,32 @@
+// pages/index.tsx
 import React, { useState, useEffect } from 'react';
+import { GetServerSideProps } from 'next';
+import { useRouter } from 'next/router';
 import { Search, ChevronRight, BadgeCheck, Heart, UsersRound, BedDouble, Bed, ShowerHead } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Input } from "./components/ui/input";
 import { Button } from "./components/ui/button";
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { mockEventListing, mockExperienceListing, mockServiceListing, mockStayListing } from './data/mockData';
+import clientPromise from '../lib/mongodb';
 
+interface Listing {
+  _id: string;
+  type: 'service' | 'event' | 'stay' | 'experience';
+  title: string;
+  description: string;
+  location: string;
+  price: number;
+  images: string[];
+  amenities?: string[];
+  date?: string;
+  time?: string;
+  capacity?: number;
+  duration?: string;
+}
+
+interface HomePageProps {
+  listings: Listing[];
+}
 
 const categories = ['All', 'Services', 'Stays', 'Events', 'Experiences'];
 
@@ -34,14 +53,7 @@ const subCategories = {
   },
 };
 
-const mockListings = {
-  Services: [mockServiceListing],
-  Events: [mockEventListing],
-  Stays: [mockStayListing],
-  Experiences: [mockExperienceListing],
-};
-
-const HomePage = () => {
+const HomePage: React.FC<HomePageProps> = ({ listings }) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('Services');
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,21 +61,24 @@ const HomePage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [guests, setGuests] = useState(1);
-  const [activeSubcategory, setActiveSubcategory] = useState(subCategories[activeTab].items[0]);
+  const [activeSubcategory, setActiveSubcategory] = useState(subCategories[activeTab as keyof typeof subCategories].items[0]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const difference = new Date(mockEventListing.date) - new Date();
-      if (difference > 0) {
-        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-        const minutes = Math.floor((difference / 1000 / 60) % 60);
-        const seconds = Math.floor((difference / 1000) % 60);
-        return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+      const nearestEvent = listings.find(listing => listing.type === 'event' && listing.date);
+      if (nearestEvent && nearestEvent.date) {
+        const difference = new Date(nearestEvent.date).getTime() - new Date().getTime();
+        if (difference > 0) {
+          const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+          const minutes = Math.floor((difference / 1000 / 60) % 60);
+          const seconds = Math.floor((difference / 1000) % 60);
+          return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
       }
-      return 'Event started';
+      return 'No upcoming events';
     };
 
     const timer = setInterval(() => {
@@ -71,16 +86,18 @@ const HomePage = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [listings]);
 
   const filteredListings = activeCategory === 'All'
-    ? mockListings[activeTab]
-    : mockListings[activeTab].filter(listing => listing.type === activeCategory);
+    ? listings.filter(listing => listing.type === activeTab.toLowerCase().slice(0, -1))
+    : listings.filter(listing => listing.type === activeCategory.toLowerCase().slice(0, -1));
 
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Searching for:', { activeTab, searchQuery, searchLocation, startDate, endDate, guests });
+    // Implement search logic here
   };
+
   const renderSearchForm = () => {
     switch (activeTab) {
       case 'Services':
@@ -130,45 +147,12 @@ const HomePage = () => {
               type="number"
               placeholder="No of Guests"
               value={guests}
-              onChange={(e) => setGuests(e.target.valueAsNumber)}
+              onChange={(e) => setGuests(parseInt(e.target.value))}
               className="flex-grow rounded-full"
             />
           </>
         );
-
       case 'Events':
-        return (
-          <>
-            <Input
-              type="text"
-              placeholder="Location"
-              value={searchLocation}
-              onChange={(e) => setSearchLocation(e.target.value)}
-              className="flex-grow rounded-full"
-            />
-            <Input
-              type="date"
-              placeholder="Start Date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="flex-grow rounded-full text-gray-500 dark:text-gray-200"
-            />
-            <Input
-              type="date"
-              placeholder="End Date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="flex-grow rounded-full"
-            />
-            <Input
-              type="number"
-              placeholder="No of Guests"
-              value={guests}
-              onChange={(e) => setGuests(e.target.valueAsNumber)}
-              className="flex-grow rounded-full"
-            />
-          </>
-        );
       case 'Experiences':
         return (
           <>
@@ -197,7 +181,7 @@ const HomePage = () => {
               type="number"
               placeholder="No of Guests"
               value={guests}
-              onChange={(e) => setGuests(e.target.valueAsNumber)}
+              onChange={(e) => setGuests(parseInt(e.target.value))}
               className="flex-grow rounded-full"
             />
           </>
@@ -207,16 +191,15 @@ const HomePage = () => {
     }
   };
 
-
-  const renderCard = (listing) => {
+  const renderCard = (listing: Listing) => {
     const handleCardClick = () => {
-      router.push(`/${activeTab.toLowerCase()}/${listing.id}`);
+      router.push(`/${listing.type}s/${listing._id}`);
     };
 
-    switch (activeTab) {
-      case 'Services':
+    switch (listing.type) {
+      case 'service':
         return (
-          <div key={listing.id} className="relative rounded-2xl h-fit bg-white dark:bg-gray-800 cursor-pointer" onClick={handleCardClick}>
+          <div key={listing._id} className="relative rounded-2xl h-fit bg-white dark:bg-gray-800 cursor-pointer" onClick={handleCardClick}>
             <div className="p-2">
               <div className="relative">
                 <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover rounded-2xl" />
@@ -243,9 +226,9 @@ const HomePage = () => {
             </div>
           </div>
         );
-      case 'Stays':
+      case 'stay':
         return (
-          <div key={listing.id} className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" onClick={handleCardClick}>
+          <div key={listing._id} className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" onClick={handleCardClick}>
             <div className="p-2">
               <div className="relative">
                 <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover rounded-2xl" />
@@ -272,25 +255,25 @@ const HomePage = () => {
                 <div className="border-r border-b border-gray-300 dark:border-gray-600 pr-2">
                   <span className='p-2 text-xs flex items-center gap-1'>
                     <UsersRound className='h-3.5 w-3.5 text-primary' />
-                    {listing.amenities.length} guests
+                    {listing.amenities?.length} guests
                   </span>
                 </div>
                 <div className="border-b border-gray-300 dark:border-gray-600 pl-2">
                   <span className='p-2 text-xs flex items-center gap-1'>
                     <BedDouble className='h-3.5 w-3.5 text-primary' />
-                    {listing.amenities.includes('Fully Equipped Kitchen') ? '1 kitchen' : 'No kitchen'}
+                    {listing.amenities?.includes('Fully Equipped Kitchen') ? '1 kitchen' : 'No kitchen'}
                   </span>
                 </div>
                 <div className="border-r border-gray-300 dark:border-gray-600 pr-2">
                   <span className='p-2 text-xs flex items-center gap-1'>
                     <ShowerHead className='h-3.5 w-3.5 text-primary' />
-                    {listing.amenities.includes('Pool') ? '1 pool' : 'No pool'}
+                    {listing.amenities?.includes('Pool') ? '1 pool' : 'No pool'}
                   </span>
                 </div>
                 <div className="pl-2">
                   <span className='p-2 text-xs flex items-center gap-1'>
                     <Bed className='h-3.5 w-3.5 text-primary' />
-                    {listing.amenities.length} amenities
+                    {listing.amenities?.length} amenities
                   </span>
                 </div>
               </div>
@@ -303,9 +286,9 @@ const HomePage = () => {
             </div>
           </div>
         );
-      case 'Events':
+      case 'event':
         return (
-          <div key={listing.id} className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" onClick={handleCardClick}>
+          <div key={listing._id} className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" onClick={handleCardClick}>
             <div className="p-2">
               <div className="relative">
                 <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover rounded-2xl" />
@@ -341,9 +324,9 @@ const HomePage = () => {
             </div>
           </div>
         );
-      case 'Experiences':
+      case 'experience':
         return (
-          <div key={listing.id} className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" onClick={handleCardClick}>
+          <div key={listing._id} className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" onClick={handleCardClick}>
             <div className="absolute inset-0">
               <img 
                 src={listing.images[0]} 
@@ -373,10 +356,8 @@ const HomePage = () => {
     }
   };
 
-
   return (
-    <div className=" bg-gray-100 dark:bg-gray-900">
-
+    <div className="bg-gray-100 dark:bg-gray-900">
       <main>
         <div className="max-w-6xl mx-auto py-36 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -403,7 +384,6 @@ const HomePage = () => {
 
             {/* Search Form Section */}
             <div className="py-10">
-              {/* <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Find Your Perfect {activeTab}</h2> */}
               <div className="rounded-full backdrop-blur-md bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
                 <div className="px-4 py-5 sm:p-6">
                   <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
@@ -416,42 +396,6 @@ const HomePage = () => {
               </div>
             </div>
           </div>
-
-          {/* Featured Listings */}
-          {/* <div className="mt-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Featured Listings</h2>
-            <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-          <TabsList className="mb-6">
-            {categories.map((category) => (
-              <TabsTrigger key={category} value={category}>
-                {category}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {categories.map((category) => (
-            <TabsContent key={category} value={category}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredListings.map((listing) => (
-                  <Card key={listing.id}>
-                    <CardHeader>
-                      <img src={listing.image} alt={listing.title} className="w-full h-48 object-cover rounded-t-lg" />
-                    </CardHeader>
-                    <CardContent>
-                      <CardTitle>{listing.title}</CardTitle>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{listing.type}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{listing.location}</p>
-                    </CardContent>
-                    <CardFooter>
-                      <Button variant="outline" className="w-full">View Details</Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-          </div> */}
-
 
           <div className="justify-center pt-10">
             <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -479,13 +423,13 @@ const HomePage = () => {
           <div className="flex mt-10">
             <div className="w-1/4 pr-10 ">
               <h3 className="text-3xl font-semibold text-gray-900 dark:text-white">
-                {subCategories[activeTab].title}
+                {subCategories[activeTab as keyof typeof subCategories].title}
               </h3>
               <p className="text-lg text-gray-500 dark:text-gray-300 mt-2">
-                {subCategories[activeTab].subtitle}
+                {subCategories[activeTab as keyof typeof subCategories].subtitle}
               </p>
               <ul className="mt-4 space-y-4">
-                {subCategories[activeTab].items.map((subcat) => (
+                {subCategories[activeTab as keyof typeof subCategories].items.map((subcat) => (
                   <li key={subcat}>
                     <button
                       onClick={() => setActiveSubcategory(subcat)}
@@ -502,13 +446,26 @@ const HomePage = () => {
               </ul>
             </div>
             <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockListings[activeTab].map((listing) => renderCard(listing))}
+              {filteredListings.map((listing) => renderCard(listing))}
             </div>
           </div>
         </div>
       </main>
     </div>
   );
+};
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  const client = await clientPromise;
+  const db = client.db();
+
+  const listings = await db.collection('listings').find({}).toArray();
+
+  return {
+    props: {
+      listings: JSON.parse(JSON.stringify(listings)),
+    },
+  };
 };
 
 export default HomePage;

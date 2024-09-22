@@ -1,163 +1,84 @@
-import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
-import { mockServiceListing } from '../data/mockData';
-import { Input } from '../components/ui/input';
-import { Button } from '../components/ui/button';
-import { Checkbox } from '../components/ui/checkbox';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
+// pages/services.tsx
+import { GetServerSideProps } from 'next';
+import { useRouter } from 'next/router';
+import { BadgeCheck, Heart } from 'lucide-react';
+import { Button } from "../components/ui/button";
+import clientPromise from '../lib/mongodb';
 
-const ITEMS_PER_PAGE = 12;
+interface Service {
+  _id: string;
+  title: string;
+  description: string;
+  location: string;
+  price: number;
+  images: string[];
+}
 
-const ServicesPage = () => {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchLocation, setSearchLocation] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const [filteredListings, setFilteredListings] = useState([]);
-    const [filters, setFilters] = useState({
-        homeServices: false,
-        professionalServices: false,
-        personalCare: false,
-    });
+interface ServicesPageProps {
+  services: Service[];
+}
 
-    useEffect(() => {
-        if (Array.isArray(mockServiceListing)) {
-            const filtered = mockServiceListing.filter(service => 
-            (searchQuery === '' || service.title.toLowerCase().includes(searchQuery.toLowerCase())) &&
-            (searchLocation === '' || service.location.toLowerCase().includes(searchLocation.toLowerCase())) &&
-            ((!filters.homeServices && !filters.professionalServices && !filters.personalCare) ||
-            (filters.homeServices && service.category === 'Home Services') ||
-            (filters.professionalServices && service.category === 'Professional Services') ||
-            (filters.personalCare && service.category === 'Personal Care'))
-        );
-        setFilteredListings(filtered);
-        setCurrentPage(1);
-    }
-    else {
-        setFilteredListings([]);
-    }
-    }, [searchQuery, searchLocation, filters]);
+const ServicesPage: React.FC<ServicesPageProps> = ({ services }) => {
+  const router = useRouter();
 
-    const handleSearch = (e) => {
-        e.preventDefault();
-        // Search is handled by the useEffect hook
+  const renderServiceCard = (service: Service) => {
+    const handleCardClick = () => {
+      router.push(`/services/${service._id}`);
     };
-
-    const handleFilterChange = (filterName) => {
-        setFilters(prevFilters => ({
-            ...prevFilters,
-            [filterName]: !prevFilters[filterName]
-        }));
-    };
-
-    const pageCount = Math.ceil(filteredListings.length / ITEMS_PER_PAGE);
-    const currentListings = filteredListings.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
-    );
 
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                {/* Search Form Section */}
-                <div className="px-4 py-8 sm:px-0">
-                    <div className="rounded-lg bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
-                        <div className="px-4 py-5 sm:p-6">
-                            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Find Services</h2>
-                            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
-                                <Input
-                                    type="text"
-                                    placeholder="What Type of Service Are You Looking For?"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="flex-grow"
-                                />
-                                <Input
-                                    type="text"
-                                    placeholder="Location"
-                                    value={searchLocation}
-                                    onChange={(e) => setSearchLocation(e.target.value)}
-                                    className="flex-grow"
-                                />
-                                <Button type="submit" className="w-full sm:w-auto">
-                                    <Search className="mr-2 h-4 w-4" /> Search
-                                </Button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="flex flex-col md:flex-row gap-8">
-                    {/* Filters */}
-                    <div className="md:w-1/4">
-                        <h2 className="text-xl font-semibold mb-4">Filters</h2>
-                        <div className="space-y-2">
-                            <div className="flex items-center">
-                                <Checkbox 
-                                    id="homeServices" 
-                                    checked={filters.homeServices}
-                                    onCheckedChange={() => handleFilterChange('homeServices')}
-                                />
-                                <label htmlFor="homeServices" className="ml-2">Home Services</label>
-                            </div>
-                            <div className="flex items-center">
-                                <Checkbox 
-                                    id="professionalServices" 
-                                    checked={filters.professionalServices}
-                                    onCheckedChange={() => handleFilterChange('professionalServices')}
-                                />
-                                <label htmlFor="professionalServices" className="ml-2">Professional Services</label>
-                            </div>
-                            <div className="flex items-center">
-                                <Checkbox 
-                                    id="personalCare" 
-                                    checked={filters.personalCare}
-                                    onCheckedChange={() => handleFilterChange('personalCare')}
-                                />
-                                <label htmlFor="personalCare" className="ml-2">Personal Care</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Listings */}
-                    <div className="md:w-3/4">
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Browse Services</h1>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {currentListings.map((listing) => (
-                                <Card key={listing.id}>
-                                    <CardHeader>
-                                        <img src={listing.images[0]} alt={listing.title} className="w-full h-48 object-cover rounded-t-lg" />
-                                    </CardHeader>
-                                    <CardContent>
-                                        <CardTitle>{listing.title}</CardTitle>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">{listing.category}</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">{listing.location}</p>
-                                    </CardContent>
-                                    <CardFooter>
-                                        <Button variant="outline" className="w-full">View Details</Button>
-                                    </CardFooter>
-                                </Card>
-                            ))}
-                        </div>
-
-                        {/* Pagination */}
-                        <div className="mt-8 flex justify-center">
-                            <div className="join">
-                                {[...Array(pageCount)].map((_, index) => (
-                                    <Button
-                                        key={index}
-                                        className={`join-item ${currentPage === index + 1 ? 'btn-active' : ''}`}
-                                        onClick={() => setCurrentPage(index + 1)}
-                                    >
-                                        {index + 1}
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+      <div key={service._id} className="relative rounded-2xl h-fit bg-white dark:bg-gray-800 cursor-pointer" onClick={handleCardClick}>
+        <div className="p-2">
+          <div className="relative">
+            <img src={service.images[0]} alt={service.title} className="w-full h-40 object-cover rounded-2xl" />
+            <span className="absolute flex gap-1 items-center justify-between top-2 right-2 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
+              <BadgeCheck className='w-3.5 h-3.5' />
+              Verified
+            </span>
+          </div>
         </div>
+        <div className="py-2 px-2">
+          <div className="py-2">
+            <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
+              Service
+            </span>
+          </div>
+          <h2 className='text-gray-800 dark:text-white'>{service.title}</h2>
+          <p className='text-gray-500 dark:text-gray-500'>{service.location}</p>
+        </div>
+        <div className="p-4">
+          <div className='flex justify-between space-x-4'>
+            <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart className='' /></span>
+            <button className="bg-primary hover:bg-transparent border border-primary hover:text-primary text-white w-full py-2 rounded-2xl">View Details</button>
+          </div>
+        </div>
+      </div>
     );
+  };
+
+  return (
+    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Services</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {services.map(renderServiceCard)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  const client = await clientPromise;
+  const db = client.db();
+
+  const services = await db.collection('listings').find({ type: 'service' }).toArray();
+
+  return {
+    props: {
+      services: JSON.parse(JSON.stringify(services)),
+    },
+  };
 };
 
 export default ServicesPage;
