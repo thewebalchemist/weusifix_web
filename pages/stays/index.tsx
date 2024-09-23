@@ -3,7 +3,7 @@ import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { BadgeCheck, Heart, UsersRound, BedDouble, ShowerHead, Bed } from 'lucide-react';
 import { Button } from "../components/ui/button";
-import clientPromise from '../lib/mongodb';
+import clientPromise from '@/lib/mongodb';
 
 interface Stay {
   _id: string;

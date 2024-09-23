@@ -15,6 +15,7 @@ import { Switch } from './components/ui/switch';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import AuthDialog from './components/AuthDialog';
+import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 
 
 // Dynamically import the Map component
@@ -59,6 +60,7 @@ const TimePicker = ({ value, onChange }) => {
 
 
 const AddListingForm = () => {
+  const { user, loading } = useFirebaseAuth();
   const { data: session, status } = useSession();
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -122,35 +124,37 @@ const AddListingForm = () => {
     const checkAuth = async () => {
       setIsLoading(true);
 
-      if (status === 'loading') return;
+      if (loading) return;
 
-      if (status === 'unauthenticated') {
+      if (!user) {
         console.log('User is not authenticated');
-        setIsAuthDialogOpen(true);
-        setIsLoading(false);
+        router.push('/login');
         return;
       }
 
-      if (status === 'authenticated' && session?.user) {
-        console.log('User is authenticated:', session.user);
-        try {
-          await checkUserRole();
-          await fetchUserDetails();
-          setIsLoading(false);
-        } catch (error) {
-          console.error('Error checking user role:', error);
-          toast.error('Failed to verify user permissions. Please try again.');
-          setIsLoading(false);
-        }
+      console.log('User is authenticated:', user);
+      try {
+        await checkUserRole(user.uid);
+        await fetchUserDetails(user.uid);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error checking user role:', error);
+        toast.error('Failed to verify user permissions. Please try again.');
+        setIsLoading(false);
       }
     };
 
     checkAuth();
-  }, [status, session]);
+  }, [user, loading, router]);
 
-  const fetchUserDetails = async () => {
+  const fetchUserDetails = async (uid) => {
     try {
-      const response = await fetch(`/api/users?uid=${session.user.uid}`);
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/users?uid=${uid}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (response.ok) {
         const userData = await response.json();
         setFormData(prevData => ({
@@ -160,19 +164,20 @@ const AddListingForm = () => {
             ...userData.userDetails
           }
         }));
+        setIsFirstTimeListing(!userData.hasListings);
       }
     } catch (error) {
       console.error('Error fetching user details:', error);
     }
   };
 
-  const checkUserRole = async () => {
-    if (!session?.user?.uid) {
-      console.error('User ID is missing');
-      throw new Error('User ID is missing');
-    }
-
-    const response = await fetch(`/api/users?uid=${session.user.uid}`);
+  const checkUserRole = async (uid) => {
+    const token = await user.getIdToken();
+    const response = await fetch(`/api/users?uid=${uid}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     if (!response.ok) {
       console.error('Failed to fetch user role:', response.statusText);
       throw new Error('Failed to fetch user role');
@@ -198,15 +203,45 @@ const AddListingForm = () => {
     setFormData(prevData => ({ ...prevData, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    setFormData(prevData => ({ ...prevData, images: Array.from(e.target.files) }));
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files);
+    const uploadedUrls = [];
+
+    for (const file of files) {
+      const storageRef = ref(storage, `listings/${user.uid}/${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      uploadedUrls.push(url);
+    }
+
+    setFormData(prevData => ({ ...prevData, images: [...prevData.images, ...uploadedUrls] }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleProfilePicChange = async (e) => {
+    const file = e.target.files[0];
+    const storageRef = ref(storage, `users/${user.uid}/profile-pic`);
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    setFormData(prevData => ({ 
+      ...prevData, 
+      userDetails: { ...prevData.userDetails, profilePic: url }
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const formDataToSubmit = { ...formData, listingType };
-      
+      const token = await user.getIdToken();
+      const slugifiedTitle = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const listingId = `${listingType}/${slugifiedTitle}`;
+
+      const formDataToSubmit = { 
+        ...formData, 
+        listingType, 
+        listingId, 
+        isIndividual: listingType === 'service' ? isIndividual : undefined 
+      };
+
       // Remove fields not related to the current listing type
       if (listingType !== 'service') delete formDataToSubmit.serviceCategory;
       if (listingType !== 'event') {
@@ -234,6 +269,7 @@ const AddListingForm = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(formDataToSubmit),
       });
@@ -256,6 +292,7 @@ const AddListingForm = () => {
   }
 
 
+
   const renderTypeSelection = () => (
     <Card className="mb-4">
       <CardHeader>
@@ -274,6 +311,17 @@ const AddListingForm = () => {
           </Card>
         ))}
       </CardContent>
+      {listingType === 'service' && (
+        <div className="mt-4">
+          <Label>Are you an individual or a business?</Label>
+          <Switch
+            checked={isIndividual}
+            onCheckedChange={setIsIndividual}
+            className="mt-2"
+          />
+          <span className="ml-2">{isIndividual ? 'Individual' : 'Business'}</span>
+        </div>
+      )}
     </Card>
   );
 
@@ -541,22 +589,25 @@ const AddListingForm = () => {
         <Input
           type="file"
           accept="image/*"
-          onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, profilePic: e.target.files[0] } }))}
+          onChange={handleProfilePicChange}
+          required={isFirstTimeListing}
         />
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-        <Input
-          name="phone"
-          placeholder="Phone/WhatsApp Number"
-          value={formData.userDetails.phone}
-          onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, phone: e.target.value } }))}
-        />
-        <Input
-          name="email"
-          type="email"
-          placeholder="Email"
-          value={formData.userDetails.email}
-          onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, email: e.target.value } }))}
-        />
+          <Input
+            name="phone"
+            placeholder="Phone/WhatsApp Number"
+            value={formData.userDetails.phone}
+            onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, phone: e.target.value } }))}
+            required={isFirstTimeListing}
+          />
+          <Input
+            name="email"
+            type="email"
+            placeholder="Email"
+            value={formData.userDetails.email}
+            onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, email: e.target.value } }))}
+            required={isFirstTimeListing}
+          />
         </div>
         <Textarea
           name="bio"
@@ -568,6 +619,7 @@ const AddListingForm = () => {
               setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, bio: e.target.value } }));
             }
           }}
+          required={isFirstTimeListing}
         />
         {Object.keys(formData.userDetails.socialMedia).map((platform) => (
           <Input
@@ -590,7 +642,6 @@ const AddListingForm = () => {
       </CardContent>
     </Card>
   );
-
   const renderEventFields = () => (
     <Card className="mb-4">
       <CardHeader>
@@ -899,10 +950,6 @@ const AddListingForm = () => {
 
   return (
     <div className="min-h-screen mx-auto py-28 lg:py-32 lg:max-w-5xl bg-gray-100 dark:bg-gray-900">
-      <AuthDialog 
-        isOpen={isAuthDialogOpen} 
-        onClose={() => setIsAuthDialogOpen(false)} 
-      />
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="bg-white dark:bg-gray-800 overflow-hidden rounded-3xl">
           <div className="px-4 py-5 sm:p-6">

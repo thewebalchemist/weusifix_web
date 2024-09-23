@@ -1,6 +1,4 @@
-// components/AuthDialog.tsx
 import React, { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Input } from "./ui/input";
@@ -8,7 +6,7 @@ import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import toast from 'react-hot-toast';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 
 interface AuthDialogProps {
@@ -23,16 +21,12 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await signIn('credentials', {
-      redirect: false,
-      email,
-      password,
-    });
-    if (result?.ok) {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       toast.success('Logged in successfully!');
       onClose();
-    } else {
-      toast.error(result?.error || 'Failed to log in');
+    } catch (error) {
+      toast.error('Failed to log in');
     }
   };
 
@@ -42,18 +36,18 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
+      const token = await user.getIdToken();
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ uid: user.uid, email: user.email, role }),
       });
 
       if (response.ok) {
         toast.success('Account created successfully!');
-        // Sign in the user after successful sign-up
-        await signIn('credentials', { email, password, redirect: false });
         onClose();
       } else {
         toast.error('Failed to create account');
