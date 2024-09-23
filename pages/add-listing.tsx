@@ -5,13 +5,16 @@ import { Button } from "./components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Textarea } from './components/ui/textarea';
 import { Checkbox } from './components/ui/checkbox';
-
+import toast, { Toaster } from 'react-hot-toast';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Label } from './components/ui/label';
 import { Switch } from './components/ui/switch';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import AuthDialog from './components/AuthDialog';
 
 
 // Dynamically import the Map component
@@ -57,6 +60,8 @@ const TimePicker = ({ value, onChange }) => {
 
 const AddListingForm = () => {
   const { data: session, status } = useSession();
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [listingType, setListingType] = useState('');
@@ -64,7 +69,7 @@ const AddListingForm = () => {
     title: '',
     description: '',
     videoLink: '',
-    location: [51.505, -0.09], // Default to London
+    location: [51.505, -0.09],
     address: '',
     images: [],
     featuredImageIndex: 0,
@@ -85,25 +90,20 @@ const AddListingForm = () => {
       socialMedia: {
         facebook: '',
         twitter: '',
-        tiktok: '',
         instagram: '',
         youtube: ''
       }
     },
-    // Service specific
     serviceCategory: '',
-    // Event specific
     eventDate: null,
     eventTime: null,
     capacity: '',
     eventPricing: [],
-    // Stay specific
     checkInTime: null,
     checkOutTime: null,
     stayAvailability: [],
     amenities: [],
     stayPrice: '',
-    // Experience specific
     experienceCategory: '',
     duration: '',
     included: '',
@@ -117,6 +117,82 @@ const AddListingForm = () => {
     }
   });
 
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      setIsLoading(true);
+
+      if (status === 'loading') return;
+
+      if (status === 'unauthenticated') {
+        console.log('User is not authenticated');
+        setIsAuthDialogOpen(true);
+        setIsLoading(false);
+        return;
+      }
+
+      if (status === 'authenticated' && session?.user) {
+        console.log('User is authenticated:', session.user);
+        try {
+          await checkUserRole();
+          await fetchUserDetails();
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error checking user role:', error);
+          toast.error('Failed to verify user permissions. Please try again.');
+          setIsLoading(false);
+        }
+      }
+    };
+
+    checkAuth();
+  }, [status, session]);
+
+  const fetchUserDetails = async () => {
+    try {
+      const response = await fetch(`/api/users?uid=${session.user.uid}`);
+      if (response.ok) {
+        const userData = await response.json();
+        setFormData(prevData => ({
+          ...prevData,
+          userDetails: {
+            ...prevData.userDetails,
+            ...userData.userDetails
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+    }
+  };
+
+  const checkUserRole = async () => {
+    if (!session?.user?.uid) {
+      console.error('User ID is missing');
+      throw new Error('User ID is missing');
+    }
+
+    const response = await fetch(`/api/users?uid=${session.user.uid}`);
+    if (!response.ok) {
+      console.error('Failed to fetch user role:', response.statusText);
+      throw new Error('Failed to fetch user role');
+    }
+
+    const userData = await response.json();
+    console.log('User data:', userData);
+
+    if (userData.role !== 'provider') {
+      console.log('User is not a provider');
+      toast.error('You are not authorized to add listings');
+      router.push('/dashboard');
+      throw new Error('User is not authorized to add listings');
+    }
+
+    console.log('User is a provider');
+  };
+
+
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevData => ({ ...prevData, [name]: value }));
@@ -126,51 +202,59 @@ const AddListingForm = () => {
     setFormData(prevData => ({ ...prevData, images: Array.from(e.target.files) }));
   };
 
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      checkUserRole();
-    } else if (status === 'unauthenticated') {
-      router.push('/auth');
-    }
-  }, [status]);
-
-  const checkUserRole = async () => {
-    const response = await fetch(`/api/users?uid=${session.user.uid}`);
-    if (response.ok) {
-      const userData = await response.json();
-      if (userData.role !== 'provider') {
-        router.push('/dashboard');
-      }
-    } else {
-      console.error('Failed to fetch user role');
-      router.push('/dashboard');
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const formDataToSubmit = { ...formData, listingType };
+      
+      // Remove fields not related to the current listing type
+      if (listingType !== 'service') delete formDataToSubmit.serviceCategory;
+      if (listingType !== 'event') {
+        delete formDataToSubmit.eventDate;
+        delete formDataToSubmit.eventTime;
+        delete formDataToSubmit.capacity;
+        delete formDataToSubmit.eventPricing;
+      }
+      if (listingType !== 'stay') {
+        delete formDataToSubmit.checkInTime;
+        delete formDataToSubmit.checkOutTime;
+        delete formDataToSubmit.stayAvailability;
+        delete formDataToSubmit.amenities;
+        delete formDataToSubmit.stayPrice;
+      }
+      if (listingType !== 'experience') {
+        delete formDataToSubmit.experienceCategory;
+        delete formDataToSubmit.duration;
+        delete formDataToSubmit.included;
+        delete formDataToSubmit.groupSize;
+        delete formDataToSubmit.experiencePricing;
+      }
+
       const response = await fetch('/api/listings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          userId: session.user.uid,
-        }),
+        body: JSON.stringify(formDataToSubmit),
       });
 
       if (response.ok) {
+        toast.success('Listing added successfully!');
         router.push('/dashboard');
       } else {
-        console.error('Failed to add listing');
+        const errorData = await response.json();
+        toast.error(`Failed to add listing: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error adding listing:', error);
+      toast.error('An error occurred while adding the listing. Please try again.');
     }
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
 
   const renderTypeSelection = () => (
     <Card className="mb-4">
@@ -204,12 +288,14 @@ const AddListingForm = () => {
           placeholder="Title"
           value={formData.title}
           onChange={handleInputChange}
+          required
         />
         <Textarea
           name="description"
           placeholder="Description"
           value={formData.description}
           onChange={handleInputChange}
+          required
         />
         <Input
           name="videoLink"
@@ -220,18 +306,21 @@ const AddListingForm = () => {
         {listingType === 'service' && (
           <div>
             <Label>Service Category</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {['Home Services', 'Professional Services', 'Personal Care'].map((category) => (
-                <div key={category} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={category}
-                    checked={formData.serviceCategory === category}
-                    onCheckedChange={() => setFormData(prevData => ({ ...prevData, serviceCategory: category }))}
-                  />
-                  <Label htmlFor={category}>{category}</Label>
-                </div>
-              ))}
-            </div>
+            <Select 
+              name="serviceCategory" 
+              value={formData.serviceCategory}
+              onValueChange={(value) => handleInputChange({ target: { name: 'serviceCategory', value } })}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Home Services">Home Services</SelectItem>
+                <SelectItem value="Professional Services">Professional Services</SelectItem>
+                <SelectItem value="Personal Care">Personal Care</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
         {listingType === 'stay' && (
@@ -241,6 +330,7 @@ const AddListingForm = () => {
             placeholder="Price per night"
             value={formData.stayPrice}
             onChange={handleInputChange}
+            required
           />
         )}
         {listingType === 'experience' && (
@@ -259,6 +349,8 @@ const AddListingForm = () => {
                     [priceType]: e.target.value
                   }
                 }))}
+                type="number"
+                required
               />
             ))}
           </div>
@@ -500,155 +592,145 @@ const AddListingForm = () => {
   );
 
   const renderEventFields = () => (
-    <>
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle>Event Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input
-            type="date"
-            name="eventDate"
-            value={formData.eventDate}
-            onChange={handleInputChange}
-          />
-          <TimePicker
-            value={formData.eventTime}
-            onChange={(time) => setFormData(prevData => ({ ...prevData, eventTime: time }))}
-          />
-          <Input
-            name="capacity"
-            type="number"
-            placeholder="Capacity"
-            value={formData.capacity}
-            onChange={handleInputChange}
-          />
-        </CardContent>
-      </Card>
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle>Event Pricing</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {formData.eventPricing.map((ticket, index) => (
-            <div key={index} className="flex space-x-2">
-              <Input
-                placeholder="Ticket Type"
-                value={ticket.type}
-                onChange={(e) => {
-                  const newPricing = [...formData.eventPricing];
-                  newPricing[index].type = e.target.value;
-                  setFormData(prevData => ({ ...prevData, eventPricing: newPricing }));
-                }}
-              />
-              <Input
-                type="number"
-                placeholder="Price"
-                value={ticket.price}
-                onChange={(e) => {
-                  const newPricing = [...formData.eventPricing];
-                  newPricing[index].price = e.target.value;
-                  setFormData(prevData => ({ ...prevData, eventPricing: newPricing }));
-                }}
-              />
-              <Button onClick={() => {
-                const newPricing = formData.eventPricing.filter((_, i) => i !== index);
+    <Card className="mb-4">
+      <CardHeader>
+        <CardTitle>Event Details</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Input
+          type="date"
+          name="eventDate"
+          value={formData.eventDate}
+          onChange={handleInputChange}
+          required
+        />
+        <TimePicker
+          value={formData.eventTime}
+          onChange={(time) => setFormData(prevData => ({ ...prevData, eventTime: time }))}
+        />
+        <Input
+          name="capacity"
+          type="number"
+          placeholder="Capacity"
+          value={formData.capacity}
+          onChange={handleInputChange}
+          required
+        />
+        {formData.eventPricing.map((ticket, index) => (
+          <div key={index} className="flex space-x-2">
+            <Input
+              placeholder="Ticket Type"
+              value={ticket.type}
+              onChange={(e) => {
+                const newPricing = [...formData.eventPricing];
+                newPricing[index].type = e.target.value;
                 setFormData(prevData => ({ ...prevData, eventPricing: newPricing }));
-              }}>Remove</Button>
-            </div>
-          ))}
-          <Button onClick={() => {
-            const newPricing = [...formData.eventPricing, { type: '', price: '' }];
-            setFormData(prevData => ({ ...prevData, eventPricing: newPricing }));
-          }}>Add Ticket Type</Button>
-        </CardContent>
-      </Card>
-    </>
+              }}
+              required
+            />
+            <Input
+              type="number"
+              placeholder="Price"
+              value={ticket.price}
+              onChange={(e) => {
+                const newPricing = [...formData.eventPricing];
+                newPricing[index].price = e.target.value;
+                setFormData(prevData => ({ ...prevData, eventPricing: newPricing }));
+              }}
+              required
+            />
+            <Button onClick={() => {
+              const newPricing = formData.eventPricing.filter((_, i) => i !== index);
+              setFormData(prevData => ({ ...prevData, eventPricing: newPricing }));
+            }}>Remove</Button>
+          </div>
+        ))}
+        <Button onClick={() => {
+          const newPricing = [...formData.eventPricing, { type: '', price: '' }];
+          setFormData(prevData => ({ ...prevData, eventPricing: newPricing }));
+        }}>Add Ticket Type</Button>
+      </CardContent>
+    </Card>
   );
 
+
+
   const renderStayFields = () => (
-    <>
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle>Stay Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex space-x-4">
-            <div>
-              <Label>Check-in Time</Label>
-              <TimePicker
-                value={formData.checkInTime}
-                onChange={(time) => setFormData(prevData => ({ ...prevData, checkInTime: time }))}
-              />
-            </div>
-            <div>
-              <Label>Check-out Time</Label>
-              <TimePicker
-                value={formData.checkOutTime}
-                onChange={(time) => setFormData(prevData => ({ ...prevData, checkOutTime: time }))}
-              />
-            </div>
+    <Card className="mb-4">
+      <CardHeader>
+        <CardTitle>Stay Details</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex space-x-4">
+          <div>
+            <Label>Check-in Time</Label>
+            <TimePicker
+              value={formData.checkInTime}
+              onChange={(time) => setFormData(prevData => ({ ...prevData, checkInTime: time }))}
+            />
           </div>
           <div>
-            <Label>Amenities</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {['Wi-Fi', 'Kitchen', 'Parking', 'Pool', 'Air Conditioning'].map((amenity) => (
-                <div key={amenity} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={amenity}
-                    checked={formData.amenities.includes(amenity)}
-                    onCheckedChange={(checked) => {
-                      const newAmenities = checked
-                        ? [...formData.amenities, amenity]
-                        : formData.amenities.filter(a => a !== amenity);
-                      setFormData(prevData => ({ ...prevData, amenities: newAmenities }));
-                    }}
-                  />
-                  <Label htmlFor={amenity}>{amenity}</Label>
-                </div>
-              ))}
-            </div>
+            <Label>Check-out Time</Label>
+            <TimePicker
+              value={formData.checkOutTime}
+              onChange={(time) => setFormData(prevData => ({ ...prevData, checkOutTime: time }))}
+            />
           </div>
-        </CardContent>
-      </Card>
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle>Stay Availability</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {formData.stayAvailability.map((period, index) => (
-            <div key={index} className="flex space-x-2">
-              <Input
-                type="date"
-                value={period.start}
-                onChange={(e) => {
-                  const newAvailability = [...formData.stayAvailability];
-                  newAvailability[index].start = e.target.value;
-                  setFormData(prevData => ({ ...prevData, stayAvailability: newAvailability }));
-                }}
-              />
-              <Input
-                type="date"
-                value={period.end}
-                onChange={(e) => {
-                  const newAvailability = [...formData.stayAvailability];
-                  newAvailability[index].end = e.target.value;
-                  setFormData(prevData => ({ ...prevData, stayAvailability: newAvailability }));
-                }}
-              />
-              <Button onClick={() => {
-                const newAvailability = formData.stayAvailability.filter((_, i) => i !== index);
+        </div>
+        <div>
+          <Label>Amenities</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {['Wi-Fi', 'Kitchen', 'Parking', 'Pool', 'Air Conditioning'].map((amenity) => (
+              <div key={amenity} className="flex items-center space-x-2">
+                <Checkbox
+                  id={amenity}
+                  checked={formData.amenities.includes(amenity)}
+                  onCheckedChange={(checked) => {
+                    const newAmenities = checked
+                      ? [...formData.amenities, amenity]
+                      : formData.amenities.filter(a => a !== amenity);
+                    setFormData(prevData => ({ ...prevData, amenities: newAmenities }));
+                  }}
+                />
+                <Label htmlFor={amenity}>{amenity}</Label>
+              </div>
+            ))}
+          </div>
+        </div>
+        {formData.stayAvailability.map((period, index) => (
+          <div key={index} className="flex space-x-2">
+            <Input
+              type="date"
+              value={period.start}
+              onChange={(e) => {
+                const newAvailability = [...formData.stayAvailability];
+                newAvailability[index].start = e.target.value;
                 setFormData(prevData => ({ ...prevData, stayAvailability: newAvailability }));
-              }}>Remove</Button>
-            </div>
-          ))}
-          <Button onClick={() => {
-            const newAvailability = [...formData.stayAvailability, { start: '', end: '' }];
-            setFormData(prevData => ({ ...prevData, stayAvailability: newAvailability }));
-          }}>Add Availability Period</Button>
-        </CardContent>
-      </Card>
-    </>
+              }}
+              required
+            />
+            <Input
+              type="date"
+              value={period.end}
+              onChange={(e) => {
+                const newAvailability = [...formData.stayAvailability];
+                newAvailability[index].end = e.target.value;
+                setFormData(prevData => ({ ...prevData, stayAvailability: newAvailability }));
+              }}
+              required
+            />
+            <Button onClick={() => {
+              const newAvailability = formData.stayAvailability.filter((_, i) => i !== index);
+              setFormData(prevData => ({ ...prevData, stayAvailability: newAvailability }));
+            }}>Remove</Button>
+          </div>
+        ))}
+        <Button onClick={() => {
+          const newAvailability = [...formData.stayAvailability, { start: '', end: '' }];
+          setFormData(prevData => ({ ...prevData, stayAvailability: newAvailability }));
+        }}>Add Availability Period</Button>
+      </CardContent>
+    </Card>
   );
 
   const renderExperienceFields = () => (
@@ -657,7 +739,12 @@ const AddListingForm = () => {
         <CardTitle>Experience Details</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Select name="experienceCategory" onValueChange={(value) => handleInputChange({ target: { name: 'experienceCategory', value } })}>
+        <Select 
+          name="experienceCategory" 
+          value={formData.experienceCategory}
+          onValueChange={(value) => handleInputChange({ target: { name: 'experienceCategory', value } })}
+          required
+        >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Experience Category" />
           </SelectTrigger>
@@ -672,12 +759,14 @@ const AddListingForm = () => {
           placeholder="Duration (e.g., 2 hours)"
           value={formData.duration}
           onChange={handleInputChange}
+          required
         />
         <Textarea
           name="included"
           placeholder="What's included in the experience?"
           value={formData.included}
           onChange={handleInputChange}
+          required
         />
         <Input
           name="groupSize"
@@ -685,6 +774,7 @@ const AddListingForm = () => {
           placeholder="Maximum Group Size"
           value={formData.groupSize}
           onChange={handleInputChange}
+          required
         />
       </CardContent>
     </Card>
@@ -696,7 +786,93 @@ const AddListingForm = () => {
         <CardTitle>Preview</CardTitle>
       </CardHeader>
       <CardContent>
-        <pre>{JSON.stringify(formData, null, 2)}</pre>
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{formData.title}</h2>
+          <p>{formData.description}</p>
+          {formData.videoLink && (
+            <div>
+              <h3 className="text-xl font-semibold">Video</h3>
+              <a href={formData.videoLink} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                Watch Video
+              </a>
+            </div>
+          )}
+          <div>
+            <h3 className="text-xl font-semibold">Location</h3>
+            <p>{formData.address}</p>
+          </div>
+          {formData.images.length > 0 && (
+            <div>
+              <h3 className="text-xl font-semibold">Gallery</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {formData.images.map((image, index) => (
+                  <img 
+                    key={index} 
+                    src={URL.createObjectURL(image)} 
+                    alt={`Gallery item ${index + 1}`} 
+                    className="w-full h-24 object-cover"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          {listingType === 'service' && (
+            <div>
+              <h3 className="text-xl font-semibold">Service Category</h3>
+              <p>{formData.serviceCategory}</p>
+            </div>
+          )}
+          {listingType === 'event' && (
+            <div>
+              <h3 className="text-xl font-semibold">Event Details</h3>
+              <p>Date: {formData.eventDate}</p>
+              <p>Time: {formData.eventTime}</p>
+              <p>Capacity: {formData.capacity}</p>
+              <h4 className="text-lg font-semibold">Pricing</h4>
+              <ul>
+                {formData.eventPricing.map((ticket, index) => (
+                  <li key={index}>{ticket.type}: ${ticket.price}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {listingType === 'stay' && (
+            <div>
+              <h3 className="text-xl font-semibold">Stay Details</h3>
+              <p>Check-in: {formData.checkInTime}</p>
+              <p>Check-out: {formData.checkOutTime}</p>
+              <p>Price per night: ${formData.stayPrice}</p>
+              <h4 className="text-lg font-semibold">Amenities</h4>
+              <ul>
+                {formData.amenities.map((amenity, index) => (
+                  <li key={index}>{amenity}</li>
+                ))}
+              </ul>
+              <h4 className="text-lg font-semibold">Availability</h4>
+              <ul>
+                {formData.stayAvailability.map((period, index) => (
+                  <li key={index}>From {period.start} to {period.end}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {listingType === 'experience' && (
+            <div>
+              <h3 className="text-xl font-semibold">Experience Details</h3>
+              <p>Category: {formData.experienceCategory}</p>
+              <p>Duration: {formData.duration}</p>
+              <p>Group Size: {formData.groupSize}</p>
+              <h4 className="text-lg font-semibold">What's Included</h4>
+              <p>{formData.included}</p>
+              <h4 className="text-lg font-semibold">Pricing</h4>
+              <ul>
+                {Object.entries(formData.experiencePricing).map(([type, price]) => (
+                  <li key={type}>{type}: ${price}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -723,9 +899,12 @@ const AddListingForm = () => {
 
   return (
     <div className="min-h-screen mx-auto py-28 lg:py-32 lg:max-w-5xl bg-gray-100 dark:bg-gray-900">
+      <AuthDialog 
+        isOpen={isAuthDialogOpen} 
+        onClose={() => setIsAuthDialogOpen(false)} 
+      />
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="bg-white dark:bg-gray-800 overflow-hidden rounded-3xl">
-          
           <div className="px-4 py-5 sm:p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               {steps[step].component()}
@@ -746,5 +925,4 @@ const AddListingForm = () => {
     </div>
   );
 };
-
 export default AddListingForm;

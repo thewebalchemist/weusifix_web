@@ -1,12 +1,11 @@
 // pages/api/auth/[...nextauth].ts
-import NextAuth, { NextAuthOptions } from 'next-auth';
-import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
+import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../../lib/firebase';
 import clientPromise from '../../../lib/mongodb';
 
-export const authOptions: NextAuthOptions = {
+export default NextAuth({
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -16,37 +15,47 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error('Please enter an email and password');
         }
         try {
           const userCredential = await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
           const user = userCredential.user;
-          return { id: user.uid, email: user.email };
+          
+          // Fetch user role from MongoDB
+          const client = await clientPromise;
+          const db = client.db();
+          const dbUser = await db.collection('users').findOne({ uid: user.uid });
+          
+          return { 
+            id: user.uid, 
+            email: user.email, 
+            name: user.displayName,
+            role: dbUser?.role || 'guest' // Default to 'guest' if role is not found
+          };
         } catch (error) {
-          console.error('Error during authentication:', error);
-          return null;
+          console.error('Authentication error:', error);
+          throw new Error('Invalid email or password');
         }
       }
     }),
   ],
-  adapter: MongoDBAdapter(clientPromise),
-  session: {
-    strategy: 'jwt',
-  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.uid = user.id;
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).uid = token.uid;
+        (session.user as any).role = token.role;
       }
       return session;
     },
   },
-};
-
-export default NextAuth(authOptions);
+  pages: {
+    signIn: '/auth/signin',
+  },
+});

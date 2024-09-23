@@ -1,19 +1,25 @@
-// pages/auth.tsx
+// components/AuthDialog.tsx
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
+import { Label } from "./ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import toast from 'react-hot-toast';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../lib/firebase';
-import { Input } from "./components/ui/input";
-import { Button } from "./components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
+import { auth } from '../../lib/firebase';
 
-const AuthPage: React.FC = () => {
+interface AuthDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('');
-  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,9 +29,10 @@ const AuthPage: React.FC = () => {
       password,
     });
     if (result?.ok) {
-      router.push('/');
+      toast.success('Logged in successfully!');
+      onClose();
     } else {
-      console.error('Login failed:', result?.error);
+      toast.error(result?.error || 'Failed to log in');
     }
   };
 
@@ -35,7 +42,6 @@ const AuthPage: React.FC = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Save user role to MongoDB
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -45,90 +51,81 @@ const AuthPage: React.FC = () => {
       });
 
       if (response.ok) {
-        router.push('/add-listing');
+        toast.success('Account created successfully!');
+        // Sign in the user after successful sign-up
+        await signIn('credentials', { email, password, redirect: false });
+        onClose();
       } else {
-        console.error('Failed to save user role');
+        toast.error('Failed to create account');
       }
     } catch (error) {
-      console.error('Signup error:', error);
+      toast.error('Error creating account');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
-        <Tabs defaultValue="login" className="w-full">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="text-gray-800 dark:text-gray-300">
+        <DialogHeader>
+          <DialogTitle>Authentication</DialogTitle>
+          <DialogDescription>Login or create a new account</DialogDescription>
+        </DialogHeader>
+        <Tabs defaultValue="login">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
           </TabsList>
           <TabsContent value="login">
-            <form onSubmit={handleLogin} className="p-6 space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label htmlFor="loginEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Email
-                </label>
+                <Label htmlFor="loginEmail">Email</Label>
                 <Input
-                  type="email"
                   id="loginEmail"
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="mt-1"
                 />
               </div>
               <div>
-                <label htmlFor="loginPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Password
-                </label>
+                <Label htmlFor="loginPassword">Password</Label>
                 <Input
-                  type="password"
                   id="loginPassword"
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="mt-1"
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Log In
-              </Button>
+              <Button type="submit" className="w-full">Log In</Button>
             </form>
           </TabsContent>
           <TabsContent value="signup">
-            <form onSubmit={handleSignup} className="p-6 space-y-4">
+            <form onSubmit={handleSignup} className="space-y-4">
               <div>
-                <label htmlFor="signupEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Email
-                </label>
+                <Label htmlFor="signupEmail">Email</Label>
                 <Input
-                  type="email"
                   id="signupEmail"
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="mt-1"
                 />
               </div>
               <div>
-                <label htmlFor="signupPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Password
-                </label>
+                <Label htmlFor="signupPassword">Password</Label>
                 <Input
-                  type="password"
                   id="signupPassword"
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="mt-1"
                 />
               </div>
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Role
-                </label>
+                <Label htmlFor="role">Role</Label>
                 <Select onValueChange={setRole} required>
-                  <SelectTrigger className="w-full mt-1">
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -137,15 +134,13 @@ const AuthPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full">
-                Sign Up
-              </Button>
+              <Button type="submit" className="w-full">Sign Up</Button>
             </form>
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default AuthPage;
+export default AuthDialog;
