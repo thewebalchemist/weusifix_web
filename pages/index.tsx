@@ -359,7 +359,7 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
         <main>
           <div className="max-w-6xl mx-auto py-36 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-              <h1 className="text-center text-8xl font-semibold text-gray-900 dark:text-white">
+              <h1 className="text-center text-5xl lg:text-8xl font-semibold text-gray-900 dark:text-white">
                 Whatever you <span className='text-primary italic underline'>need</span> is here!
               </h1>
               {/* Tabs Section */}
@@ -381,8 +381,8 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
               </div>
   
               {/* Search Form Section */}
-              <div className="py-10">
-                <div className="rounded-full backdrop-blur-md bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
+              <div className="py-4 lg:py-10">
+                <div className="rounded-xl lg:rounded-full backdrop-blur-md bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
                   <div className="px-4 py-5 sm:p-6">
                     <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
                       {renderSearchForm()}

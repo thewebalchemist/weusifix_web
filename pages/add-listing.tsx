@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,12 @@ import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 import { storage } from '../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Checkbox } from '@/components/ui/checkbox';
-;
-
+import AuthDialog from '@/components/AuthDialog';
+import { useDropzone } from 'react-dropzone';
 
 // Dynamically import the Map component
 const DynamicMap = dynamic(() => import('@/components/MapComponent'), {
-  ssr: false, // This will disable server-side rendering for this component
+  ssr: false,
   loading: () => <p>Loading map...</p>,
 });
 
@@ -55,8 +55,6 @@ const TimePicker = ({ value, onChange }) => {
   );
 };
 
-
-
 const AddListingForm = () => {
   const { user, loading } = useFirebaseAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -65,6 +63,7 @@ const AddListingForm = () => {
   const [listingType, setListingType] = useState('');
   const [isIndividual, setIsIndividual] = useState(true);
   const [isFirstTimeListing, setIsFirstTimeListing] = useState(true);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -88,6 +87,7 @@ const AddListingForm = () => {
       email: '',
       bio: '',
       socialMedia: {
+        website: '',
         facebook: '',
         twitter: '',
         instagram: '',
@@ -104,6 +104,7 @@ const AddListingForm = () => {
     stayAvailability: [],
     amenities: [],
     stayPrice: '',
+    priceCurrency: 'KES',
     experienceCategory: '',
     duration: '',
     included: '',
@@ -117,7 +118,6 @@ const AddListingForm = () => {
     }
   });
 
-
   useEffect(() => {
     const checkAuth = async () => {
       setIsLoading(true);
@@ -126,7 +126,8 @@ const AddListingForm = () => {
 
       if (!user) {
         console.log('User is not authenticated');
-        router.push('/login');
+        setIsAuthDialogOpen(true);
+        setIsLoading(false);
         return;
       }
 
@@ -194,26 +195,29 @@ const AddListingForm = () => {
     console.log('User is a provider');
   };
 
-
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevData => ({ ...prevData, [name]: value }));
   };
 
-  const handleFileChange = async (e) => {
-    const files = Array.from(e.target.files);
-    const uploadedUrls = [];
-
-    for (const file of files) {
-      const storageRef = ref(storage, `listings/${user.uid}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      uploadedUrls.push(url);
+  const onDrop = useCallback((acceptedFiles) => {
+    if (formData.images.length + acceptedFiles.length > 6) {
+      toast.error('Maximum 6 images allowed');
+      return;
     }
+    setFormData(prevData => ({ 
+      ...prevData, 
+      images: [...prevData.images, ...acceptedFiles.slice(0, 6 - prevData.images.length)] 
+    }));
+  }, [formData.images]);
 
-    setFormData(prevData => ({ ...prevData, images: [...prevData.images, ...uploadedUrls] }));
-  };
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif']
+    },
+    maxFiles: 6,
+  });
 
   const handleProfilePicChange = async (e) => {
     const file = e.target.files[0];
@@ -226,18 +230,34 @@ const AddListingForm = () => {
     }));
   };
 
+  const handleAuthDialogClose = () => {
+    setIsAuthDialogOpen(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = await user.getIdToken();
+      
+      // Upload new images
+      const uploadedUrls = await Promise.all(
+        formData.images.map(async (image) => {
+          if (typeof image === 'string') return image; // Already uploaded
+          const storageRef = ref(storage, `listings/${user.uid}/${image.name}`);
+          await uploadBytes(storageRef, image);
+          return getDownloadURL(storageRef);
+        })
+      );
+  
       const slugifiedTitle = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const listingId = `${listingType}/${slugifiedTitle}`;
-
+  
       const formDataToSubmit = { 
         ...formData, 
         listingType, 
         listingId, 
-        isIndividual: listingType === 'service' ? isIndividual : undefined 
+        isIndividual: listingType === 'service' ? isIndividual : undefined,
+        images: uploadedUrls
       };
 
       // Remove fields not related to the current listing type
@@ -286,10 +306,8 @@ const AddListingForm = () => {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div className="text-center mx-auto my-auto">Loading...</div>;
   }
-
-
 
   const renderTypeSelection = () => (
     <Card className="mb-4">
@@ -301,7 +319,7 @@ const AddListingForm = () => {
           <Card 
             key={type} 
             className={`cursor-pointer ${listingType === type ? 'border-primary' : ''}`}
-            onClick={() => { setListingType(type); setStep(1); }}
+            onClick={() => { setListingType(type); setStep(type === 'service' ? 1 : 2); }}
           >
             <CardHeader>
               <CardTitle className="capitalize">{type}</CardTitle>
@@ -309,17 +327,30 @@ const AddListingForm = () => {
           </Card>
         ))}
       </CardContent>
-      {listingType === 'service' && (
-        <div className="mt-4">
-          <Label>Are you an individual or a business?</Label>
-          <Switch
-            checked={isIndividual}
-            onCheckedChange={setIsIndividual}
-            className="mt-2"
-          />
-          <span className="ml-2">{isIndividual ? 'Individual' : 'Business'}</span>
+    </Card>
+  );
+
+  const renderServiceTypeSelection = () => (
+    <Card className="mb-4">
+      <CardHeader>
+        <CardTitle>Service Provider Type</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex justify-center space-x-4">
+          <Card 
+            className={`cursor-pointer p-4 ${isIndividual ? 'border-primary' : ''}`}
+            onClick={() => setIsIndividual(true)}
+          >
+            <CardTitle>Individual</CardTitle>
+          </Card>
+          <Card 
+            className={`cursor-pointer p-4 ${!isIndividual ? 'border-primary' : ''}`}
+            onClick={() => setIsIndividual(false)}
+          >
+            <CardTitle>Business</CardTitle>
+          </Card>
         </div>
-      )}
+      </CardContent>
     </Card>
   );
 
@@ -365,39 +396,76 @@ const AddListingForm = () => {
                 <SelectItem value="Home Services">Home Services</SelectItem>
                 <SelectItem value="Professional Services">Professional Services</SelectItem>
                 <SelectItem value="Personal Care">Personal Care</SelectItem>
+                <SelectItem value="Educational Services">Educational Services</SelectItem>
+                <SelectItem value="Health and Wellness">Health and Wellness</SelectItem>
+                <SelectItem value="Tech Support">Tech Support</SelectItem>
+                <SelectItem value="Creative Services">Creative Services</SelectItem>
+                <SelectItem value="Business Services">Business Services</SelectItem>
+                <SelectItem value="Automotive Services">Automotive Services</SelectItem>
+                <SelectItem value="Pet Services">Pet Services</SelectItem>
               </SelectContent>
             </Select>
           </div>
         )}
         {listingType === 'stay' && (
-          <Input
-            name="stayPrice"
-            type="number"
-            placeholder="Price per night"
-            value={formData.stayPrice}
-            onChange={handleInputChange}
-            required
-          />
+          <div className="space-y-2">
+            <Label>Price per night</Label>
+            <div className="flex space-x-2">
+              <Input
+                name="stayPrice"
+                type="number"
+                placeholder="Price per night"
+                value={formData.stayPrice}
+                onChange={handleInputChange}
+                required
+              />
+              <Select 
+                value={formData.priceCurrency}
+                onValueChange={(value) => setFormData(prevData => ({ ...prevData, priceCurrency: value }))}
+              >
+                <SelectTrigger className="w-24">
+                  <SelectValue placeholder="Currency" />
+                </SelectTrigger>
+                <SelectContent>
+                <SelectItem value="KES">KES</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         )}
         {listingType === 'experience' && (
           <div className="space-y-2">
             <Label>Experience Pricing</Label>
             {Object.keys(formData.experiencePricing).map((priceType) => (
-              <Input
-                key={priceType}
-                name={`experiencePricing.${priceType}`}
-                placeholder={`Price for ${priceType}`}
-                value={formData.experiencePricing[priceType]}
-                onChange={(e) => setFormData(prevData => ({
-                  ...prevData,
-                  experiencePricing: {
-                    ...prevData.experiencePricing,
-                    [priceType]: e.target.value
-                  }
-                }))}
-                type="number"
-                required
-              />
+              <div key={priceType} className="flex space-x-2">
+                <Input
+                  name={`experiencePricing.${priceType}`}
+                  placeholder={`Price for ${priceType}`}
+                  value={formData.experiencePricing[priceType]}
+                  onChange={(e) => setFormData(prevData => ({
+                    ...prevData,
+                    experiencePricing: {
+                      ...prevData.experiencePricing,
+                      [priceType]: e.target.value
+                    }
+                  }))}
+                  type="number"
+                  required
+                />
+                <Select 
+                  value={formData.priceCurrency}
+                  onValueChange={(value) => setFormData(prevData => ({ ...prevData, priceCurrency: value }))}
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue placeholder="Currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KES">KES</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             ))}
           </div>
         )}
@@ -411,23 +479,40 @@ const AddListingForm = () => {
         <CardTitle>Gallery</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleFileChange}
-        />
+        <div {...getRootProps()} className="border-2 border-dashed border-gray-300 p-4 text-center cursor-pointer">
+          <input {...getInputProps()} />
+          {isDragActive ? (
+            <p>Drop the files here ...</p>
+          ) : (
+            <p>Drag 'n' drop some files here, or click to select files</p>
+          )}
+        </div>
+        <Button 
+          type="button" 
+          onClick={() => {
+            const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+            if (fileInput) {
+              fileInput.click();
+            }
+          }}
+        >
+          Choose Files
+        </Button>
         {formData.images.length > 0 && (
           <div>
             <Label>Select Featured Image</Label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {formData.images.map((image, index) => (
                 <div 
                   key={index} 
                   className={`rounded-2xl cursor-pointer border p-2 ${index === formData.featuredImageIndex ? 'border-primary' : ''}`}
                   onClick={() => setFormData(prevData => ({ ...prevData, featuredImageIndex: index }))}
                 >
-                  <img src={URL.createObjectURL(image)} alt={`Gallery item ${index + 1}`} className="w-full h-24 object-cover" />
+                  <img 
+                    src={typeof image === 'string' ? image : URL.createObjectURL(image)} 
+                    alt={`Gallery item ${index + 1}`} 
+                    className="w-full h-24 object-cover" 
+                  />
                 </div>
               ))}
             </div>
@@ -544,16 +629,26 @@ const AddListingForm = () => {
                     setFormData(prevData => ({ ...prevData, availability: { ...prevData.availability, slots: newSlots } }));
                   }}
                 />
-                <Button onClick={() => {
-                  const newSlots = formData.availability.slots.filter((_, i) => i !== index);
-                  setFormData(prevData => ({ ...prevData, availability: { ...prevData.availability, slots: newSlots } }));
-                }}>Remove</Button>
+                <Button 
+                  onClick={() => {
+                    const newSlots = formData.availability.slots.filter((_, i) => i !== index);
+                    setFormData(prevData => ({ ...prevData, availability: { ...prevData.availability, slots: newSlots } }));
+                  }}
+                  type="button"
+                >
+                  Remove
+                </Button>
               </div>
             ))}
-            <Button onClick={() => {
-              const newSlots = [...formData.availability.slots, { start: '09:00', end: '17:00' }];
-              setFormData(prevData => ({ ...prevData, availability: { ...prevData.availability, slots: newSlots } }));
-            }}>Add Time Slot</Button>
+            <Button 
+              onClick={() => {
+                const newSlots = [...formData.availability.slots, { start: '09:00', end: '17:00' }];
+                setFormData(prevData => ({ ...prevData, availability: { ...prevData.availability, slots: newSlots } }));
+              }}
+              type="button"
+            >
+              Add Time Slot
+            </Button>
           </div>
         )}
       </CardContent>
@@ -640,6 +735,7 @@ const AddListingForm = () => {
       </CardContent>
     </Card>
   );
+
   const renderEventFields = () => (
     <Card className="mb-4">
       <CardHeader>
@@ -688,21 +784,35 @@ const AddListingForm = () => {
               }}
               required
             />
-            <Button onClick={() => {
+            <Select 
+              value={formData.priceCurrency}
+              onValueChange={(value) => setFormData(prevData => ({ ...prevData, priceCurrency: value }))}
+            >
+              <SelectTrigger className="w-24">
+                <SelectValue placeholder="Currency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="KES">KES</SelectItem>
+                <SelectItem value="USD">USD</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+            type="button"
+            onClick={() => {
               const newPricing = formData.eventPricing.filter((_, i) => i !== index);
               setFormData(prevData => ({ ...prevData, eventPricing: newPricing }));
             }}>Remove</Button>
           </div>
         ))}
-        <Button onClick={() => {
+        <Button 
+        type="button"
+        onClick={() => {
           const newPricing = [...formData.eventPricing, { type: '', price: '' }];
           setFormData(prevData => ({ ...prevData, eventPricing: newPricing }));
         }}>Add Ticket Type</Button>
       </CardContent>
     </Card>
   );
-
-
 
   const renderStayFields = () => (
     <Card className="mb-4">
@@ -729,7 +839,11 @@ const AddListingForm = () => {
         <div>
           <Label>Amenities</Label>
           <div className="grid grid-cols-3 gap-2">
-            {['Wi-Fi', 'Kitchen', 'Parking', 'Pool', 'Air Conditioning'].map((amenity) => (
+            {[
+              'Wi-Fi', 'Kitchen', 'Parking', 'Pool', 'Air Conditioning', 'Heating',
+              'TV', 'Washer', 'Dryer', 'Iron', 'Workspace', 'Hot Tub',
+              'Gym', 'Breakfast', 'Indoor fireplace', 'Hangers', 'Hair dryer', 'Laptop-friendly workspace'
+            ].map((amenity) => (
               <div key={amenity} className="flex items-center space-x-2">
                 <Checkbox
                   id={amenity}
@@ -774,7 +888,9 @@ const AddListingForm = () => {
             }}>Remove</Button>
           </div>
         ))}
-        <Button onClick={() => {
+        <Button 
+        type="button"
+        onClick={() => {
           const newAvailability = [...formData.stayAvailability, { start: '', end: '' }];
           setFormData(prevData => ({ ...prevData, stayAvailability: newAvailability }));
         }}>Add Availability Period</Button>
@@ -801,6 +917,9 @@ const AddListingForm = () => {
             <SelectItem value="outdoor">Outdoor Adventure</SelectItem>
             <SelectItem value="culinary">Culinary Experience</SelectItem>
             <SelectItem value="cultural">Cultural Experience</SelectItem>
+            <SelectItem value="wellness">Wellness and Relaxation</SelectItem>
+            <SelectItem value="learning">Learning and Skills</SelectItem>
+            <SelectItem value="entertainment">Entertainment</SelectItem>
           </SelectContent>
         </Select>
         <Input
@@ -857,7 +976,7 @@ const AddListingForm = () => {
                 {formData.images.map((image, index) => (
                   <img 
                     key={index} 
-                    src={URL.createObjectURL(image)} 
+                    src={typeof image === 'string' ? image : URL.createObjectURL(image)}
                     alt={`Gallery item ${index + 1}`} 
                     className="w-full h-24 object-cover"
                   />
@@ -869,6 +988,7 @@ const AddListingForm = () => {
             <div>
               <h3 className="text-xl font-semibold">Service Category</h3>
               <p>{formData.serviceCategory}</p>
+              <p>Provider Type: {isIndividual ? 'Individual' : 'Business'}</p>
             </div>
           )}
           {listingType === 'event' && (
@@ -880,7 +1000,7 @@ const AddListingForm = () => {
               <h4 className="text-lg font-semibold">Pricing</h4>
               <ul>
                 {formData.eventPricing.map((ticket, index) => (
-                  <li key={index}>{ticket.type}: ${ticket.price}</li>
+                  <li key={index}>{ticket.type}: {formData.priceCurrency} {ticket.price}</li>
                 ))}
               </ul>
             </div>
@@ -890,7 +1010,7 @@ const AddListingForm = () => {
               <h3 className="text-xl font-semibold">Stay Details</h3>
               <p>Check-in: {formData.checkInTime}</p>
               <p>Check-out: {formData.checkOutTime}</p>
-              <p>Price per night: ${formData.stayPrice}</p>
+              <p>Price per night: {formData.priceCurrency} {formData.stayPrice}</p>
               <h4 className="text-lg font-semibold">Amenities</h4>
               <ul>
                 {formData.amenities.map((amenity, index) => (
@@ -916,7 +1036,7 @@ const AddListingForm = () => {
               <h4 className="text-lg font-semibold">Pricing</h4>
               <ul>
                 {Object.entries(formData.experiencePricing).map(([type, price]) => (
-                  <li key={type}>{type}: ${price}</li>
+                  <li key={type}>{type}: {formData.priceCurrency} {price}</li>
                 ))}
               </ul>
             </div>
@@ -928,12 +1048,13 @@ const AddListingForm = () => {
 
   const steps = [
     { title: 'Listing Type', component: renderTypeSelection },
+    ...(listingType === 'service' ? [{ title: 'Service Type', component: renderServiceTypeSelection }] : []),
     { title: 'Basic Details', component: renderBasicDetails },
     { title: 'Gallery', component: renderGallery },
     { title: 'Location', component: renderLocation },
-    { title: 'Opening Hours', component: renderOpeningHours },
-    { title: 'Availability', component: renderAvailability },
-    { title: 'Booking Option', component: renderBookingOption },
+    ...(listingType !== 'stay' && listingType !== 'event' ? [{ title: 'Opening Hours', component: renderOpeningHours }] : []),
+    ...(listingType !== 'stay' && listingType !== 'event' ? [{ title: 'Availability', component: renderAvailability }] : []),
+    ...(listingType !== 'event' ? [{ title: 'Booking Option', component: renderBookingOption }] : []),
     { title: 'User Details', component: renderUserDetails },
     { title: 'Preview', component: renderPreview },
   ];
@@ -949,6 +1070,10 @@ const AddListingForm = () => {
   return (
     <div className="min-h-screen mx-auto py-28 lg:py-32 lg:max-w-5xl bg-gray-100 dark:bg-gray-900">
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <AuthDialog 
+          isOpen={isAuthDialogOpen} 
+          onClose={handleAuthDialogClose}
+        />
         <div className="bg-white dark:bg-gray-800 overflow-hidden rounded-3xl">
           <div className="px-4 py-5 sm:p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -970,4 +1095,5 @@ const AddListingForm = () => {
     </div>
   );
 };
+
 export default AddListingForm;
