@@ -1,25 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Input } from "./components/ui/input";
-import { Button } from "./components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
-import { Textarea } from './components/ui/textarea';
-import { Checkbox } from './components/ui/checkbox';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from '@/components/ui/textarea';
 import toast, { Toaster } from 'react-hot-toast';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { Label } from './components/ui/label';
-import { Switch } from './components/ui/switch';
-import { useSession } from 'next-auth/react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
-import AuthDialog from './components/AuthDialog';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
+import { storage } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Checkbox } from '@/components/ui/checkbox';
+;
 
 
 // Dynamically import the Map component
-const DynamicMap = dynamic(() => import('./components/MapComponent'), {
+const DynamicMap = dynamic(() => import('@/components/MapComponent'), {
   ssr: false, // This will disable server-side rendering for this component
   loading: () => <p>Loading map...</p>,
 });
@@ -61,12 +59,12 @@ const TimePicker = ({ value, onChange }) => {
 
 const AddListingForm = () => {
   const { user, loading } = useFirebaseAuth();
-  const { data: session, status } = useSession();
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [listingType, setListingType] = useState('');
+  const [isIndividual, setIsIndividual] = useState(true);
+  const [isFirstTimeListing, setIsFirstTimeListing] = useState(true);
   const [formData, setFormData] = useState({
     title: '',
     description: '',

@@ -1,17 +1,24 @@
 // pages/experiences.tsx
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { Heart } from 'lucide-react';
-import { Button } from "../components/ui/button";
-import clientPromise from '../lib/mongodb';
+import { Heart, BadgeCheck } from 'lucide-react';
+import { Button } from "../../components/ui/button";
+import clientPromise from '@/lib/mongodb';
 
 interface Experience {
   _id: string;
+  type: 'experience';
   title: string;
   description: string;
   location: string;
   price: number;
   images: string[];
+  hostName: string;
+  hostAvatar: string;
+  hostRating: number;
+  duration: string;
+  maxGroupSize: number;
+  included: string[];
 }
 
 interface ExperiencesPageProps {
@@ -27,7 +34,7 @@ const ExperiencesPage: React.FC<ExperiencesPageProps> = ({ experiences }) => {
     };
 
     return (
-      <div key={experience._id} className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" onClick={handleCardClick}>
+      <div key={experience._id} className="relative rounded-2xl overflow-hidden h-80 w-full cursor-pointer" onClick={handleCardClick}>
         <div className="absolute inset-0">
           <img 
             src={experience.images[0]} 
@@ -37,7 +44,8 @@ const ExperiencesPage: React.FC<ExperiencesPageProps> = ({ experiences }) => {
         </div>
         <div className="absolute top-0 left-0 right-0 p-4 ">
           <div className="flex justify-between items-center">
-            <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
+            <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100 flex items-center">
+              <BadgeCheck className='w-3.5 h-3.5 mr-1' />
               Experience
             </span>
             <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-700 bg-opacity-80'><Heart className='h-4 w-4' /></span>
@@ -46,9 +54,12 @@ const ExperiencesPage: React.FC<ExperiencesPageProps> = ({ experiences }) => {
         <div className="absolute bottom-0 left-0 right-0 bg-gray-600 bg-opacity-80 p-4 rounded-b-2xl">
           <h2 className="text-white text-lg font-semibold mb-1">{experience.title}</h2>
           <p className="mb-2 text-gray-200 text-sm">{experience.location}</p>
-          <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
-            <span className="font-bold">${experience.price}/</span> person
-          </span>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
+              <span className="font-bold">${experience.price}/</span> person
+            </span>
+            <span className="text-sm text-white">{experience.duration}</span>
+          </div>
         </div>
       </div>
     );

@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Star, MapPin, Clock, Users, BedDouble, Wifi, Car, Waves, Snowflake, MessageCircle, PhoneCall, Facebook, Twitter, Instagram, Share, Heart } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Calendar } from '../components/ui/calendar';
-import { Button } from '../components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Calendar } from './ui/calendar';
+import { Button } from './ui/button';
 
 const StarRating = ({ rating }) => {
   return (

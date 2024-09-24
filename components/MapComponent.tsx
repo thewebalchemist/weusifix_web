@@ -8,8 +8,8 @@ import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
 let DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
+  iconUrl: '/images/marker-icon.png',
+  shadowUrl: 'leaflet/dist/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41]
 });
@@ -26,6 +26,7 @@ const MapEvents = ({ setLocation }) => {
 };
 
 const MapComponent = ({ location, setLocation }) => {
+
   return (
     <MapContainer center={location} zoom={13} style={{ height: '300px', width: '100%' }}>
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { Search, BadgeCheck, Heart } from 'lucide-react';
-import { Input } from "./components/ui/input";
-import { Button } from "./components/ui/button";
-import clientPromise from '../lib/mongodb';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import clientPromise from '@/lib/mongodb';
 
 interface Listing {
   _id: string;

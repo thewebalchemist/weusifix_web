@@ -1,17 +1,21 @@
 // pages/services.tsx
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { BadgeCheck, Heart } from 'lucide-react';
-import { Button } from "../components/ui/button";
-import clientPromise from '../lib/mongodb';
+import { BadgeCheck, Heart, Star } from 'lucide-react';
+import { Button } from "../../components/ui/button";
+import clientPromise from '@/lib/mongodb';
 
 interface Service {
   _id: string;
+  type: 'service';
   title: string;
   description: string;
   location: string;
   price: number;
   images: string[];
+  providerName: string;
+  providerAvatar: string;
+  providerRating: number;
 }
 
 interface ServicesPageProps {
@@ -27,7 +31,7 @@ const ServicesPage: React.FC<ServicesPageProps> = ({ services }) => {
     };
 
     return (
-      <div key={service._id} className="relative rounded-2xl h-fit bg-white dark:bg-gray-800 cursor-pointer" onClick={handleCardClick}>
+      <div key={service._id} className="relative rounded-2xl h-fit bg-white dark:bg-gray-800 cursor-pointer shadow-md" onClick={handleCardClick}>
         <div className="p-2">
           <div className="relative">
             <img src={service.images[0]} alt={service.title} className="w-full h-40 object-cover rounded-2xl" />
@@ -37,19 +41,25 @@ const ServicesPage: React.FC<ServicesPageProps> = ({ services }) => {
             </span>
           </div>
         </div>
-        <div className="py-2 px-2">
-          <div className="py-2">
+        <div className="p-4">
+          <div className="flex justify-between items-center mb-2">
             <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
               Service
             </span>
+            <div className="flex items-center">
+              <Star className="w-4 h-4 text-yellow-400 fill-current" />
+              <span className="ml-1 text-sm font-semibold">{service.providerRating.toFixed(1)}</span>
+            </div>
           </div>
-          <h2 className='text-gray-800 dark:text-white'>{service.title}</h2>
-          <p className='text-gray-500 dark:text-gray-500'>{service.location}</p>
-        </div>
-        <div className="p-4">
-          <div className='flex justify-between space-x-4'>
-            <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart className='' /></span>
-            <button className="bg-primary hover:bg-transparent border border-primary hover:text-primary text-white w-full py-2 rounded-2xl">View Details</button>
+          <h2 className='text-lg font-semibold text-gray-800 dark:text-white mb-1'>{service.title}</h2>
+          <p className='text-sm text-gray-500 dark:text-gray-400 mb-2'>{service.location}</p>
+          <p className='text-lg font-bold text-gray-900 dark:text-white mb-4'>${service.price}</p>
+          <div className='flex justify-between items-center'>
+            <div className="flex items-center">
+              <img src={service.providerAvatar} alt={service.providerName} className="w-8 h-8 rounded-full mr-2" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">{service.providerName}</span>
+            </div>
+            <Heart className='text-gray-400 hover:text-red-500 cursor-pointer' />
           </div>
         </div>
       </div>
@@ -60,7 +70,7 @@ const ServicesPage: React.FC<ServicesPageProps> = ({ services }) => {
     <div className="bg-gray-100 dark:bg-gray-900 min-h-screen py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Services</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {services.map(renderServiceCard)}
         </div>
       </div>

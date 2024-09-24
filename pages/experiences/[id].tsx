@@ -1,9 +1,9 @@
 // pages/experiences/[id].tsx
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { ExperienceListing } from '../../components/SingleListingPage';
 import clientPromise from '../../lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { ExperienceListing } from '../../components/SingleListingPage';
 
 interface Experience {
   _id: string;
