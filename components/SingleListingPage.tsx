@@ -120,17 +120,29 @@ const ServiceListing = ({ service }) => {
                     <AvatarFallback>{service.userDetails.email[0]}</AvatarFallback>
                   </Avatar>
                   <div>
+                  <h3 className="text-lg font-semibold">{service.userDetails.name}</h3>
                     <h3 className="text-lg font-semibold">{service.userDetails.email}</h3>
                     <p className="text-sm text-gray-500">{service.isIndividual ? 'Individual' : 'Business'}</p>
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 mb-4">{service.userDetails.bio}</p>
                 <div className="flex space-x-2 mb-4">
-                  <Button variant="outline" className="flex-1">
-                    <MessageCircle className="mr-2 h-4 w-4" /> Chat
-                  </Button>
-                  <Button variant="outline" className="flex-1">
+                  
+                  
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `tel:${userPhone}`}
+                  >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `mailto:${userEmail}`}
+                  >
+                    <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">

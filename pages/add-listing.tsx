@@ -82,6 +82,7 @@ const AddListingForm = () => {
     },
     bookingEnabled: false,
     userDetails: {
+      name: '',
       profilePic: null,
       phone: '',
       email: '',
@@ -695,6 +696,13 @@ const AddListingForm = () => {
           type="file"
           accept="image/*"
           onChange={handleProfilePicChange}
+          required={isFirstTimeListing}
+        />
+        <Input
+          name="name"
+          placeholder="Your Name/Business Name"
+          value={formData.userDetails.name}
+          onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, name: e.target.value } }))}
           required={isFirstTimeListing}
         />
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
