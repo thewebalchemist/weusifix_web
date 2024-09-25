@@ -51,21 +51,21 @@ const TimePicker = ({ value, onChange }) => {
 const EditListingForm = () => {
   const { user, loading } = useFirebaseAuth();
   const router = useRouter();
-  const { id } = router.query;
+  const { type, slug } = router.query;
   const [formData, setFormData] = useState(null);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
-    } else if (user && id) {
+    } else if (user && type && slug) {
       fetchListing();
     }
-  }, [user, loading, id, router]);
+  }, [user, loading, type, slug, router]);
 
   const fetchListing = async () => {
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/listings/${id}`, {
+      const response = await fetch(`/api/listings/${type}/${slug}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -105,7 +105,7 @@ const EditListingForm = () => {
     e.preventDefault();
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/listings/${id}`, {
+      const response = await fetch(`/api/listings/${type}/${slug}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -115,8 +115,14 @@ const EditListingForm = () => {
       });
 
       if (response.ok) {
+        const { newSlug } = await response.json();
         toast.success('Listing updated successfully!');
-        router.push('/dashboard');
+        // If the slug has changed, redirect to the new URL
+        if (newSlug && newSlug !== slug) {
+          router.push(`/edit-listing/${type}/${newSlug}`);
+        } else {
+          router.push('/dashboard');
+        }
       } else {
         const errorData = await response.json();
         toast.error(`Failed to update listing: ${errorData.error || 'Unknown error'}`);

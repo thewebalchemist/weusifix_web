@@ -7,17 +7,21 @@ import { useState, useEffect } from 'react';
 
 interface Event {
   _id: string;
-  type: 'event';
+  listingType: 'event';
   title: string;
   description: string;
-  location: string;
-  price: number;
+  address: string;
   images: string[];
-  organizerName: string;
-  organizerAvatar: string;
-  date: string;
-  time: string;
-  capacity: number;
+  userDetails: {
+    profilePic: string;
+    email: string;
+  };
+  eventDate: string;
+  eventTime: string;
+  capacity: string;
+  eventPricing: Array<{ type: string; price: string }>;
+  priceCurrency: string;
+  slug: string;
 }
 
 interface EventsPageProps {
@@ -31,8 +35,8 @@ const EventsPage: React.FC<EventsPageProps> = ({ events }) => {
   useEffect(() => {
     const calculateTimeLeft = () => {
       const nearestEvent = events[0]; // Assuming events are sorted by date
-      if (nearestEvent && nearestEvent.date) {
-        const eventDate = new Date(`${nearestEvent.date} ${nearestEvent.time}`);
+      if (nearestEvent && nearestEvent.eventDate) {
+        const eventDate = new Date(`${nearestEvent.eventDate} ${nearestEvent.eventTime}`);
         const difference = eventDate.getTime() - new Date().getTime();
         if (difference > 0) {
           const days = Math.floor(difference / (1000 * 60 * 60 * 24));
@@ -54,7 +58,7 @@ const EventsPage: React.FC<EventsPageProps> = ({ events }) => {
 
   const renderEventCard = (event: Event) => {
     const handleCardClick = () => {
-      router.push(`/events/${event._id}`);
+      router.push(`/${event.listingType}s/${event.slug}`);
     };
 
     return (
@@ -77,22 +81,24 @@ const EventsPage: React.FC<EventsPageProps> = ({ events }) => {
           <h2 className='text-lg font-semibold text-gray-800 dark:text-white mb-1'>{event.title}</h2>
           <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
             <MapPin className="w-4 h-4 mr-1" />
-            <span>{event.location}</span>
+            <span>{event.address}</span>
           </div>
           <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
-            <span>{event.date}</span>
+            <span>{event.eventDate}</span>
             <Clock className="w-4 h-4 ml-2 mr-1" />
-            <span>{event.time}</span>
+            <span>{event.eventTime}</span>
           </div>
-          <p className='text-lg font-bold text-gray-900 dark:text-white mb-2'>From ${event.price}</p>
+          <p className='text-lg font-bold text-gray-900 dark:text-white mb-2'>
+            From {event.priceCurrency} {event.eventPricing[0]?.price || 'N/A'}
+          </p>
           <div className="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-sm rounded-full px-3 py-1 mb-4">
             {timeLeft}
           </div>
           <div className='flex justify-between items-center'>
             <div className="flex items-center">
-              <img src={event.organizerAvatar} alt={event.organizerName} className="w-8 h-8 rounded-full mr-2" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">{event.organizerName}</span>
+              <img src={event.userDetails.profilePic} alt={event.userDetails.email} className="w-8 h-8 rounded-full mr-2" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">{event.userDetails.email}</span>
             </div>
             <Heart className='text-gray-400 hover:text-red-500 cursor-pointer' />
           </div>
@@ -117,7 +123,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
   const client = await clientPromise;
   const db = client.db();
 
-  const events = await db.collection('listings').find({ type: 'event' }).toArray();
+  const events = await db.collection('listings').find({ listingType: 'event' }).toArray();
 
   return {
     props: {

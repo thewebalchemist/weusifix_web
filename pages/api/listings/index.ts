@@ -1,5 +1,7 @@
-import { adminAuth } from '../../../lib/firebase-admin';
-import clientPromise from '../../../lib/mongodb';
+// pages/api/listings/index.ts
+import { adminAuth } from '@/lib/firebase-admin';
+import clientPromise from '@/lib/mongodb';
+import slugify from 'slugify';
 
 export default async function handler(req, res) {
   // Verify Firebase ID token
@@ -26,6 +28,9 @@ export default async function handler(req, res) {
       listing.userId = req.user.uid;
       listing.createdAt = new Date();
       
+      // Generate a unique slug for the listing
+      listing.slug = await createUniqueSlug(db, listing.title, listing.listingType);
+      
       const result = await db.collection('listings').insertOne(listing);
       
       // Update user's hasListings flag
@@ -34,7 +39,11 @@ export default async function handler(req, res) {
         { $set: { hasListings: true } }
       );
       
-      res.status(201).json({ message: 'Listing created successfully', id: listing.listingId });
+      res.status(201).json({ 
+        message: 'Listing created successfully', 
+        id: result.insertedId,
+        slug: listing.slug
+      });
     } catch (error) {
       console.error('Error creating listing:', error);
       res.status(500).json({ error: 'Failed to create listing' });
@@ -50,5 +59,25 @@ export default async function handler(req, res) {
   } else {
     res.setHeader('Allow', ['POST', 'GET']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+}
+
+async function createUniqueSlug(db, title, listingType) {
+  let slug = slugify(title, { lower: true, strict: true });
+  let uniqueSlug = slug;
+  let count = 0;
+
+  while (true) {
+    const existingListing = await db.collection('listings').findOne({ 
+      listingType, 
+      slug: uniqueSlug 
+    });
+
+    if (!existingListing) {
+      return uniqueSlug;
+    }
+
+    count++;
+    uniqueSlug = `${slug}-${count}`;
   }
 }

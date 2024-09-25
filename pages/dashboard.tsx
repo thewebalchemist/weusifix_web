@@ -103,10 +103,35 @@ const ProviderDashboard = () => {
       });
       if (response.ok) {
         const listingsData = await response.json();
-        setListings(listingsData);
+        // Sort listings by creation date (newest first)
+        setListings(listingsData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
       }
     } catch (error) {
       console.error('Error fetching listings:', error);
+    }
+  };
+
+
+  const handleDeleteListing = async (listingId) => {
+    if (window.confirm('Are you sure you want to delete this listing?')) {
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch(`/api/listings/${listingId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          toast.success('Listing deleted successfully');
+          fetchListings(); // Refresh the listings
+        } else {
+          toast.error('Failed to delete listing');
+        }
+      } catch (error) {
+        console.error('Error deleting listing:', error);
+        toast.error('An error occurred while deleting the listing');
+      }
     }
   };
 
@@ -199,9 +224,15 @@ const ProviderDashboard = () => {
               id="newPassword"
             />
             <Button onClick={() => {
-              const currentPassword = document.getElementById('currentPassword').value;
-              const newPassword = document.getElementById('newPassword').value;
-              handlePasswordChange(currentPassword, newPassword);
+              const currentPasswordInput = document.getElementById('currentPassword') as HTMLInputElement;
+              const newPasswordInput = document.getElementById('newPassword') as HTMLInputElement;
+
+              if (currentPasswordInput && newPasswordInput) {
+                const currentPassword = currentPasswordInput.value;
+                const newPassword = newPasswordInput.value;
+                handlePasswordChange(currentPassword, newPassword);
+              } else {
+              }
             }}>
               Change Password
             </Button>
@@ -221,13 +252,17 @@ const ProviderDashboard = () => {
           <div className="space-y-4">
             {listings.map((listing) => (
               <Card key={listing.listingId}>
-                <CardContent className="flex justify-between items-center">
+                <CardContent className="flex justify-between items-center p-4">
                   <div>
                     <h3 className="text-xl font-semibold">{listing.title}</h3>
                     <p>Type: {listing.listingType}</p>
+                    <p>Created: {new Date(listing.createdAt).toLocaleDateString()}</p>
+                    <p>Price: {listing.priceCurrency} {listing.stayPrice || listing.eventPricing?.[0]?.price || 'N/A'}</p>
+                    <p>Address: {listing.address}</p>
                   </div>
-                  <div>
-                    <Button onClick={() => router.push(`/edit-listing/${listing.listingId}`)}>Edit</Button>
+                  <div className="space-x-2">
+                    <Button onClick={() => router.push(`/edit-listing/${listing.listingType}/${listing.slug}`)}>Edit</Button>
+                    <Button variant="destructive" onClick={() => handleDeleteListing(listing.listingId)}>Delete</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -237,6 +272,42 @@ const ProviderDashboard = () => {
           <p>You haven't created any listings yet.</p>
         )}
         <Button onClick={() => router.push('/add-listing')} className="mt-4">Add New Listing</Button>
+      </CardContent>
+    </Card>
+  );
+
+
+  const renderBookings = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Bookings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Your bookings will be displayed here.</p>
+      </CardContent>
+    </Card>
+  );
+
+
+  const renderMessages = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Messages</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Your messages will be displayed here.</p>
+      </CardContent>
+    </Card>
+  );
+
+
+  const renderFavorites = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Favorites</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Your favorite listings will be displayed here.</p>
       </CardContent>
     </Card>
   );
@@ -276,6 +347,30 @@ const ProviderDashboard = () => {
             </li>
             <li>
               <button
+                className={`w-full rounded-full text-left px-4 py-2 ${activeTab === 'bookings' ? 'bg-gray-300 dark:bg-gray-700' : ''}`}
+                onClick={() => setActiveTab('bookings')}
+              >
+                Bookings
+              </button>
+            </li>
+            <li>
+              <button
+                className={`w-full rounded-full text-left px-4 py-2 ${activeTab === 'messages' ? 'bg-gray-300 dark:bg-gray-700' : ''}`}
+                onClick={() => setActiveTab('messages')}
+              >
+                Messages
+              </button>
+            </li>
+            <li>
+              <button
+                className={`w-full rounded-full text-left px-4 py-2 ${activeTab === 'favorites' ? 'bg-gray-300 dark:bg-gray-700' : ''}`}
+                onClick={() => setActiveTab('favorites')}
+              >
+                Favorites
+              </button>
+            </li>
+            <li>
+              <button
                 className={`w-full rounded-full text-left px-4 py-2 ${activeTab === 'goPro' ? 'bg-gray-300 dark:bg-gray-700' : ''}`}
                 onClick={() => setActiveTab('goPro')}
               >
@@ -289,6 +384,9 @@ const ProviderDashboard = () => {
         <h1 className="text-3xl font-bold mb-6">Provider Dashboard</h1>
         {activeTab === 'profile' && renderProfile()}
         {activeTab === 'listings' && renderListings()}
+        {activeTab === 'bookings' && renderBookings()}
+        {activeTab === 'messages' && renderMessages()}
+        {activeTab === 'favorites' && renderFavorites()}
         {activeTab === 'goPro' && renderGoPro()}
       </main>
       <AuthDialog 

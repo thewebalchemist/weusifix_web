@@ -1,23 +1,27 @@
-// pages/stays.tsx
+// pages/stays/index.tsx
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { BadgeCheck, Heart, Star, Users, BedDouble } from 'lucide-react';
-import { Button } from "../../components/ui/button";
 import clientPromise from '@/lib/mongodb';
+import Link from 'next/link';
 
 interface Stay {
   _id: string;
-  type: 'stay';
+  listingType: 'stay';
   title: string;
   description: string;
-  location: string;
-  price: number;
+  address: string;
   images: string[];
-  hostName: string;
-  hostAvatar: string;
-  hostRating: number;
+  userDetails: {
+    profilePic: string;
+    email: string;
+  };
+  stayPrice: string;
+  priceCurrency: string;
   amenities: string[];
-  capacity: number;
+  checkInTime: string;
+  checkOutTime: string;
+  slug: string;
 }
 
 interface StaysPageProps {
@@ -28,12 +32,14 @@ const StaysPage: React.FC<StaysPageProps> = ({ stays }) => {
   const router = useRouter();
 
   const renderStayCard = (stay: Stay) => {
-    const handleCardClick = () => {
-      router.push(`/stays/${stay._id}`);
-    };
+    
 
     return (
-      <div key={stay._id} className="relative rounded-2xl bg-white dark:bg-gray-800 cursor-pointer shadow-md" onClick={handleCardClick}>
+      <Link 
+        href={`/stays/${stay.slug}`}
+        key={stay._id}
+      >
+      <div key={stay._id} className="relative rounded-2xl bg-white dark:bg-gray-800 cursor-pointer shadow-md">
         <div className="p-2">
           <div className="relative">
             <img src={stay.images[0]} alt={stay.title} className="w-full h-48 object-cover rounded-2xl" />
@@ -48,33 +54,26 @@ const StaysPage: React.FC<StaysPageProps> = ({ stays }) => {
             <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
               Stay
             </span>
-            <div className="flex items-center">
-              <Star className="w-4 h-4 text-yellow-400 fill-current" />
-              <span className="ml-1 text-sm font-semibold">{stay.hostRating.toFixed(1)}</span>
-            </div>
           </div>
           <h2 className='text-lg font-semibold text-gray-800 dark:text-white mb-1'>{stay.title}</h2>
-          <p className='text-sm text-gray-500 dark:text-gray-400 mb-2'>{stay.location}</p>
-          <p className='text-lg font-bold text-gray-900 dark:text-white mb-2'>${stay.price} <span className="text-sm font-normal">/ night</span></p>
+          <p className='text-sm text-gray-500 dark:text-gray-400 mb-2'>{stay.address}</p>
+          <p className='text-lg font-bold text-gray-900 dark:text-white mb-2'>{stay.priceCurrency} {stay.stayPrice} <span className="text-sm font-normal">/ night</span></p>
           <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-300 mb-4">
             <div className="flex items-center">
-              <Users className="w-4 h-4 mr-1" />
-              <span>{stay.capacity} guests</span>
-            </div>
-            <div className="flex items-center">
               <BedDouble className="w-4 h-4 mr-1" />
-              <span>{stay.amenities.includes('Fully Equipped Kitchen') ? 'Kitchen' : 'No kitchen'}</span>
+              <span>{stay.amenities.includes('Kitchen') ? 'Kitchen' : 'No kitchen'}</span>
             </div>
           </div>
           <div className='flex justify-between items-center'>
             <div className="flex items-center">
-              <img src={stay.hostAvatar} alt={stay.hostName} className="w-8 h-8 rounded-full mr-2" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">{stay.hostName}</span>
+              <img src={stay.userDetails.profilePic} alt={stay.userDetails.email} className="w-8 h-8 rounded-full mr-2" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">{stay.userDetails.email}</span>
             </div>
             <Heart className='text-gray-400 hover:text-red-500 cursor-pointer' />
           </div>
         </div>
       </div>
+      </Link>
     );
   };
 
@@ -94,11 +93,15 @@ export const getServerSideProps: GetServerSideProps = async () => {
   const client = await clientPromise;
   const db = client.db();
 
-  const stays = await db.collection('listings').find({ type: 'stay' }).toArray();
+  const stays = await db.collection('listings').find({ listingType: 'stay' }).toArray();
 
   return {
     props: {
-      stays: JSON.parse(JSON.stringify(stays)),
+      stays: JSON.parse(JSON.stringify(stays.map(stay => ({
+        ...stay,
+        _id: stay._id.toString(),
+        listingType: 'stay' // Ensure this is set correctly
+      })))),
     },
   };
 };

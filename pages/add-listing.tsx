@@ -68,7 +68,7 @@ const AddListingForm = () => {
     title: '',
     description: '',
     videoLink: '',
-    location: [51.505, -0.09],
+    location: [-1.2840, 36.8170],
     address: '',
     images: [],
     featuredImageIndex: 0,
@@ -306,8 +306,20 @@ const AddListingForm = () => {
   };
 
   if (isLoading) {
-    return <div className="text-center mx-auto my-auto">Loading...</div>;
+    return <div className="py-32 text-center mx-auto animate-pulse">Loading...</div>;
   }
+
+  const handleNextStep = () => {
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (step > 0) {
+      setStep(step - 1);
+    }
+  };
 
   const renderTypeSelection = () => (
     <Card className="mb-4">
@@ -1076,19 +1088,19 @@ const AddListingForm = () => {
         />
         <div className="bg-white dark:bg-gray-800 overflow-hidden rounded-3xl">
           <div className="px-4 py-5 sm:p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-6">
               {steps[step].component()}
               <div className="flex justify-between">
                 {step > 0 && (
-                  <Button type="button" onClick={() => setStep(step - 1)}>Previous</Button>
+                  <Button type="button" onClick={handlePreviousStep}>Previous</Button>
                 )}
                 {step < steps.length - 1 ? (
-                  <Button type="button" onClick={() => setStep(step + 1)}>Next</Button>
+                  <Button type="button" onClick={handleNextStep}>Next</Button>
                 ) : (
-                  <Button type="submit">Submit Listing</Button>
+                  <Button type="button" onClick={handleSubmit}>Submit Listing</Button>
                 )}
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </main>

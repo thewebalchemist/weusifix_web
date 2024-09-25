@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { Search, ChevronRight, BadgeCheck, Heart, UsersRound, BedDouble, Bed, ShowerHead } from 'lucide-react';
+import { Search, ChevronRight, BadgeCheck, Heart, UsersRound, BedDouble, Bed, ShowerHead, MapPin, User } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import clientPromise from '@/lib/mongodb';
+import Link from 'next/link';
 
 interface Listing {
   _id: string;
   type: 'service' | 'event' | 'stay' | 'experience';
+  listingType: 'service' | 'event' | 'stay' | 'experience';
   title: string;
   description: string;
   location: string;
+  userDetails: {
+    profilePic: string;
+    email: string;
+  };
+  serviceCategory: string;
+  isIndividual: boolean;
+  address: string;
   price: number;
   images: string[];
   amenities?: string[];
@@ -20,6 +29,7 @@ interface Listing {
   time?: string;
   capacity?: number;
   duration?: string;
+  slug: string;
 }
 
 interface HomePageProps {
@@ -86,9 +96,11 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
     return () => clearInterval(timer);
   }, [listings]);
 
-  const filteredListings = activeCategory === 'All'
-    ? listings.filter(listing => listing.type === activeTab.toLowerCase().slice(0, -1))
-    : listings.filter(listing => listing.type === activeCategory.toLowerCase().slice(0, -1));
+  const filteredListings = listings.filter(listing => {
+    if (activeTab === 'All') return true;
+    const listingType = listing.type || listing.listingType;
+    return listingType.toLowerCase() === activeTab.toLowerCase().slice(0, -1);
+  });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,146 +202,168 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
   };
 
   const renderCard = (listing: Listing) => {
-    const handleCardClick = () => {
-      router.push(`/${listing.type}s/${listing._id}`);
+    console.log('Rendering card for:', listing.title);
+    const listingTypeToPlural: Record<string, string> = {
+      service: 'services',
+      stay: 'stays',
+      event: 'events',
+      experience: 'experiences'
     };
+
+    const listingType = listing.type || listing.listingType;
+    const listingUrl = `/${listingTypeToPlural[listingType]}/${listing.slug}`;
+
 
     switch (listing.type) {
       case 'service':
         return (
-          <div key={listing._id} className="relative rounded-2xl h-fit bg-white dark:bg-gray-800 cursor-pointer" onClick={handleCardClick}>
-            <div className="p-2">
-              <div className="relative">
-                <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover rounded-2xl" />
-                <span className="absolute flex gap-1 items-center justify-between top-2 right-2 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                  <BadgeCheck className='w-3.5 h-3.5' />
-                  Verified
-                </span>
+          <Link href={listingUrl} key={listing._id}>
+            <div className="relative rounded-2xl bg-white dark:bg-gray-800 cursor-pointer shadow-md">
+              <div className="p-2">
+                <div className="relative">
+                  <img src={listing.images[0]} alt={listing.title} className="w-full h-48 object-cover rounded-2xl" />
+                  <span className="absolute flex gap-1 items-center justify-between top-2 right-2 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                    <BadgeCheck className='w-3.5 h-3.5' />
+                    Verified
+                  </span>
+                  <span className="absolute flex gap-1 items-center justify-between bottom-2 left-2 bg-blue-100 text-primary text-sm font-semibold px-3 py-1 rounded-full">
+                    {listing.serviceCategory}
+                  </span>
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="px-3 py-1 rounded-full text-sm text-primary bg-green-100">
+                    {listing.isIndividual ? 'Individual' : 'Business'}
+                  </span>
+                </div>
+                <h2 className='text-lg font-semibold text-gray-800 dark:text-white mb-1'>{listing.title}</h2>
+                <div className="flex items-center mb-2 text-sm text-gray-500 dark:text-gray-400">
+                  <MapPin className="w-4 h-4 mr-1" />
+                  <span>{listing.address}</span>
+                </div>
+                <p className='text-sm text-gray-500 dark:text-gray-400 mb-4'>{listing.description.substring(0, 100)}...</p>
+                <div className="">
+                  <div className='flex justify-between space-x-4'>
+                    <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart /></span>
+                    <button className="bg-primary hover:bg-transparent border border-primary hover:text-primary text-white w-full py-2 rounded-2xl">View Details</button>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="py-2 px-2">
-              <div className="py-2">
-                <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
-                  Service
-                </span>
-              </div>
-              <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
-              <p className='text-gray-500 dark:text-gray-500'>{listing.location}</p>
-            </div>
-            <div className="p-4">
-              <div className='flex justify-between space-x-4'>
-                <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart className='' /></span>
-                <button className="bg-primary hover:bg-transparent border border-primary hover:text-primary text-white w-full py-2 rounded-2xl">View Details</button>
-              </div>
-            </div>
-          </div>
+          </Link>
         );
       case 'stay':
         return (
-          <div key={listing._id} className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" onClick={handleCardClick}>
-            <div className="p-2">
-              <div className="relative">
-                <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover rounded-2xl" />
-                <span className="absolute flex gap-1 items-center justify-between top-2 right-2 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                  <BadgeCheck className='w-3.5 h-3.5' />
-                  Verified
-                </span>
+          <Link href={listingUrl} key={listing._id}>
+            <div className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" >
+              <div className="p-2">
+                <div className="relative">
+                  <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover rounded-2xl" />
+                  <span className="absolute flex gap-1 items-center justify-between top-2 right-2 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                    <BadgeCheck className='w-3.5 h-3.5' />
+                    Verified
+                  </span>
+                </div>
+              </div>
+              <div className="py-4 px-2 flex flex-col justify-between">
+                <div className=" flex justify-between items-center py-2">
+                  <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
+                    Stay
+                  </span>
+                  <span className='text-sm text-gray-600 dark:text-gray-300'>
+                    <span className='font-bold'>${listing.price}/</span> night
+                  </span>
+                </div>
+                <div>
+                  <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
+                  <p className='text-gray-500 dark:text-gray-500'>{listing.location}</p>
+                </div>
+                <div className="grid grid-cols-2 items-center py-2 text-gray-800 dark:text-gray-300">
+                  <div className="border-r border-b border-gray-300 dark:border-gray-600 pr-2">
+                    <span className='p-2 text-xs flex items-center gap-1'>
+                      <UsersRound className='h-3.5 w-3.5 text-primary' />
+                      {listing.amenities?.length} guests
+                    </span>
+                  </div>
+                  <div className="border-b border-gray-300 dark:border-gray-600 pl-2">
+                    <span className='p-2 text-xs flex items-center gap-1'>
+                      <BedDouble className='h-3.5 w-3.5 text-primary' />
+                      {listing.amenities?.includes('Fully Equipped Kitchen') ? '1 kitchen' : 'No kitchen'}
+                    </span>
+                  </div>
+                  <div className="border-r border-gray-300 dark:border-gray-600 pr-2">
+                    <span className='p-2 text-xs flex items-center gap-1'>
+                      <ShowerHead className='h-3.5 w-3.5 text-primary' />
+                      {listing.amenities?.includes('Pool') ? '1 pool' : 'No pool'}
+                    </span>
+                  </div>
+                  <div className="pl-2">
+                    <span className='p-2 text-xs flex items-center gap-1'>
+                      <Bed className='h-3.5 w-3.5 text-primary' />
+                      {listing.amenities?.length} amenities
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="p-2">
+                <div className='flex justify-between space-x-4'>
+                  <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart /></span>
+                  <button className="bg-primary hover:bg-transparent border border-primary hover:text-primary text-white w-full py-2 rounded-2xl">Book Now</button>
+                </div>
               </div>
             </div>
-            <div className="py-4 px-2 flex flex-col justify-between">
-              <div className=" flex justify-between items-center py-2">
-                <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
-                  Stay
-                </span>
-                <span className='text-sm text-gray-600 dark:text-gray-300'>
-                  <span className='font-bold'>${listing.price}/</span> night
-                </span>
-              </div>
-              <div>
-                <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
-                <p className='text-gray-500 dark:text-gray-500'>{listing.location}</p>
-              </div>
-              <div className="grid grid-cols-2 items-center py-2 text-gray-800 dark:text-gray-300">
-                <div className="border-r border-b border-gray-300 dark:border-gray-600 pr-2">
-                  <span className='p-2 text-xs flex items-center gap-1'>
-                    <UsersRound className='h-3.5 w-3.5 text-primary' />
-                    {listing.amenities?.length} guests
-                  </span>
-                </div>
-                <div className="border-b border-gray-300 dark:border-gray-600 pl-2">
-                  <span className='p-2 text-xs flex items-center gap-1'>
-                    <BedDouble className='h-3.5 w-3.5 text-primary' />
-                    {listing.amenities?.includes('Fully Equipped Kitchen') ? '1 kitchen' : 'No kitchen'}
-                  </span>
-                </div>
-                <div className="border-r border-gray-300 dark:border-gray-600 pr-2">
-                  <span className='p-2 text-xs flex items-center gap-1'>
-                    <ShowerHead className='h-3.5 w-3.5 text-primary' />
-                    {listing.amenities?.includes('Pool') ? '1 pool' : 'No pool'}
-                  </span>
-                </div>
-                <div className="pl-2">
-                  <span className='p-2 text-xs flex items-center gap-1'>
-                    <Bed className='h-3.5 w-3.5 text-primary' />
-                    {listing.amenities?.length} amenities
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="p-2">
-              <div className='flex justify-between space-x-4'>
-                <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart /></span>
-                <button className="bg-primary hover:bg-transparent border border-primary hover:text-primary text-white w-full py-2 rounded-2xl">Book Now</button>
-              </div>
-            </div>
-          </div>
+          </Link>
         );
       case 'event':
         return (
-          <div key={listing._id} className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" onClick={handleCardClick}>
-            <div className="p-2">
-              <div className="relative">
-                <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover rounded-2xl" />
-                <span className="absolute flex gap-1 items-center justify-between top-2 right-2 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                  <BadgeCheck className='w-3.5 h-3.5' />
-                  Verified
-                </span>
+          <Link href={listingUrl} key={listing._id}>
+            <div className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" >
+              <div className="p-2">
+                <div className="relative">
+                  <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover rounded-2xl" />
+                  <span className="absolute flex gap-1 items-center justify-between top-2 right-2 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                    <BadgeCheck className='w-3.5 h-3.5' />
+                    Verified
+                  </span>
+                </div>
+              </div>
+              <div className="py-4 px-2 flex flex-col justify-between">
+                <div className="flex justify-between items-center py-2">
+                  <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
+                    Event
+                  </span>
+                </div>
+                <div>
+                  <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
+                  <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.location}</p>
+                  <span className='text-sm text-gray-800 dark:text-gray-100'>
+                    From
+                    <span className='font-bold'> ${listing.price}/</span> ticket
+                  </span>
+                </div>
+              </div>
+              <div className="mx-2 px-3 py-2 text-center text-md text-white rounded-xl bg-red-400">
+                {timeLeft}
+              </div>
+              <div className="p-2">
+                <div className='flex justify-between space-x-4'>
+                  <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-300'><Heart /></span>
+                  <button className="hover:bg-transparent border border-white hover:border-primary bg-primary hover:text-primary w-full py-2 rounded-2xl">Book Now</button>
+                </div>
               </div>
             </div>
-            <div className="py-4 px-2 flex flex-col justify-between">
-              <div className="flex justify-between items-center py-2">
-                <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
-                  Event
-                </span>
-              </div>
-              <div>
-                <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
-                <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.location}</p>
-                <span className='text-sm text-gray-800 dark:text-gray-100'>
-                  From
-                  <span className='font-bold'> ${listing.price}/</span> ticket
-                </span>
-              </div>
-            </div>
-            <div className="mx-2 px-3 py-2 text-center text-md text-white rounded-xl bg-red-400">
-              {timeLeft}
-            </div>
-            <div className="p-2">
-              <div className='flex justify-between space-x-4'>
-                <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-300'><Heart /></span>
-                <button className="hover:bg-transparent border border-white hover:border-primary bg-primary hover:text-primary w-full py-2 rounded-2xl">Book Now</button>
-              </div>
-            </div>
-          </div>
+          </Link>
         );
-        case 'experience':
-          return (
-            <div key={listing._id} className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" onClick={handleCardClick}>
+      case 'experience':
+        return (
+          <Link href={listingUrl} key={listing._id}>
+            <div key={listing._id} className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" >
               <div className="absolute inset-0">
-                <img 
-                  src={listing.images[0]} 
-                  alt={listing.title} 
-                  className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" 
+                <img
+                  src={listing.images[0]}
+                  alt={listing.title}
+                  className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
                 />
               </div>
               <div className="absolute top-0 left-0 right-0 p-4 ">
@@ -348,108 +382,113 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
                 </span>
               </div>
             </div>
-          );
-        default:
-          return null;
-      }
-    };
-  
-    return (
-      <div className="bg-gray-100 dark:bg-gray-900">
-        <main>
-          <div className="max-w-6xl mx-auto py-36 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-              <h1 className="text-center text-5xl lg:text-8xl font-semibold text-gray-900 dark:text-white">
-                Whatever you <span className='text-primary italic underline'>need</span> is here!
-              </h1>
-              {/* Tabs Section */}
-              <div className="flex justify-center pt-10">
-                <div className="flex px-4 py-4 justify-center space-x-4 backdrop-blur-md bg-gray-200 dark:bg-gray-700 rounded-full">
-                  {['Services', 'Events', 'Stays', 'Experiences'].map((tab) => (
+          </Link>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="bg-gray-100 dark:bg-gray-900">
+      <main>
+        <div className="max-w-6xl mx-auto py-36 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-center text-5xl lg:text-8xl font-semibold text-gray-900 dark:text-white">
+              Whatever you <span className='text-primary italic underline'>need</span> is here!
+            </h1>
+            {/* Tabs Section */}
+            <div className="flex justify-center pt-10">
+              <div className="flex px-4 py-4 justify-center space-x-4 backdrop-blur-md bg-gray-200 dark:bg-gray-700 rounded-full">
+                {['Services', 'Events', 'Stays', 'Experiences'].map((tab) => (
+                  <button
+                    key={tab}
+                    className={`px-3 py-2 font-medium text-sm rounded-full ${activeTab === tab
+                      ? 'bg-primary text-white'
+                      : ' text-gray-800 dark:text-gray-100'
+                      }`}
+                    onClick={() => setActiveTab(tab)}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search Form Section */}
+            <div className="py-4 lg:py-10">
+              <div className="rounded-xl lg:rounded-full backdrop-blur-md bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
+                <div className="px-4 py-5 sm:p-6">
+                  <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
+                    {renderSearchForm()}
+                    <Button type="submit" className="w-full sm:w-auto">
+                      <Search className="mr-2 h-4 w-4" /> Search
+                    </Button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="justify-center pt-10">
+            <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+              <h2 className="text-center text-7xl font-semibold text-gray-900 dark:text-white">
+                The <span className='text-primary underline'>#1</span> site you can trust
+              </h2>
+            </div>
+
+            <div className='flex justify-center pt-10'>
+              <div className="flex px-4 py-4 justify-center space-x-4 backdrop-blur-md bg-gray-200 dark:bg-gray-700 rounded-full">
+                {Object.keys(subCategories).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`${activeTab === tab ? 'text-white bg-primary' : 'text-gray-700 dark:text-gray-300'
+                      } px-6 py-2 rounded-full`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex mt-10">
+            <div className="w-1/4 pr-10 ">
+              <h3 className="text-3xl font-semibold text-gray-900 dark:text-white">
+                {subCategories[activeTab as keyof typeof subCategories].title}
+              </h3>
+              <p className="text-lg text-gray-500 dark:text-gray-300 mt-2">
+                {subCategories[activeTab as keyof typeof subCategories].subtitle}
+              </p>
+              <ul className="mt-4 space-y-4">
+                {subCategories[activeTab as keyof typeof subCategories].items.map((subcat) => (
+                  <li key={subcat}>
                     <button
-                      key={tab}
-                      className={`px-3 py-2 font-medium text-sm rounded-full ${activeTab === tab
+                      onClick={() => setActiveSubcategory(subcat)}
+                      className={`w-full flex justify-between text-left px-4 py-2 rounded-full ${activeSubcategory === subcat
                         ? 'bg-primary text-white'
-                        : ' text-gray-800 dark:text-gray-100'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                         }`}
-                      onClick={() => setActiveTab(tab)}
                     >
-                      {tab}
+                      {subcat}
+                      <ChevronRight />
                     </button>
-                  ))}
-                </div>
-              </div>
-  
-              {/* Search Form Section */}
-              <div className="py-4 lg:py-10">
-                <div className="rounded-xl lg:rounded-full backdrop-blur-md bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
-                  <div className="px-4 py-5 sm:p-6">
-                    <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
-                      {renderSearchForm()}
-                      <Button type="submit" className="w-full sm:w-auto">
-                        <Search className="mr-2 h-4 w-4" /> Search
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-              </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-  
-            <div className="justify-center pt-10">
-              <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                <h2 className="text-center text-7xl font-semibold text-gray-900 dark:text-white">
-                  The <span className='text-primary underline'>#1</span> site you can trust
-                </h2>
-              </div>
-  
-              <div className='flex justify-center pt-10'>
-                <div className="flex px-4 py-4 justify-center space-x-4 backdrop-blur-md bg-gray-200 dark:bg-gray-700 rounded-full">
-                  {Object.keys(subCategories).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={`${activeTab === tab ? 'text-white bg-primary' : 'text-gray-700 dark:text-gray-300'
-                        } px-6 py-2 rounded-full`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredListings.length > 0 ? (
+                filteredListings.map((listing) => renderCard(listing))
+              ) : (
+                <p>No listings found for this category.</p>
+              )}
             </div>
-  
-            <div className="flex mt-10">
-              <div className="w-1/4 pr-10 ">
-                <h3 className="text-3xl font-semibold text-gray-900 dark:text-white">
-                  {subCategories[activeTab as keyof typeof subCategories].title}
-                </h3>
-                <p className="text-lg text-gray-500 dark:text-gray-300 mt-2">
-                  {subCategories[activeTab as keyof typeof subCategories].subtitle}
-                </p>
-                <ul className="mt-4 space-y-4">
-                  {subCategories[activeTab as keyof typeof subCategories].items.map((subcat) => (
-                    <li key={subcat}>
-                      <button
-                        onClick={() => setActiveSubcategory(subcat)}
-                        className={`w-full flex justify-between text-left px-4 py-2 rounded-full ${activeSubcategory === subcat
-                          ? 'bg-primary text-white'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                          }`}
-                      >
-                        {subcat}
-                        <ChevronRight />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="w-3/4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredListings.map((listing) => renderCard(listing))}
-              </div>
-            </div>
-  
-            {/* Popular Listings Section */}
-            {/* <section className="mt-16">
+          </div>
+
+          {/* Popular Listings Section */}
+          {/* <section className="mt-16">
               <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Popular Listings</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {listings
@@ -458,67 +497,72 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
                   .map((listing) => renderCard(listing))}
               </div>
             </section> */}
-  
-            {/* Benefits Section */}
-            <section className="mt-16">
-              <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Why List With Us?</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Reach More Customers</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Get exposed to a wide audience actively looking for services, events, stays, and experiences.</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Easy Management</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Manage your listings, bookings, and customer interactions all in one place.</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Grow Your Business</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Increase your visibility and revenue with our powerful platform and marketing tools.</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
-  
-            {/* Partners Section */}
-            <section className="mt-16">
-              <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Our Partners</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8">
-                {/* Replace these with actual partner logos */}
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg flex items-center justify-center">
-                    <img src={`/placeholder-logo-${i + 1}.png`} alt={`Partner ${i + 1}`} className="h-12" />
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        </main>
-      </div>
-    );
+
+          {/* Benefits Section */}
+          <section className="mt-16">
+            <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Why List With Us?</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reach More Customers</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Get exposed to a wide audience actively looking for services, events, stays, and experiences.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Easy Management</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Manage your listings, bookings, and customer interactions all in one place.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Grow Your Business</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Increase your visibility and revenue with our powerful platform and marketing tools.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
+          {/* Partners Section */}
+          <section className="mt-16">
+            <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Our Partners</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8">
+              {/* Replace these with actual partner logos */}
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg flex items-center justify-center">
+                  <img src={`/placeholder-logo-${i + 1}.png`} alt={`Partner ${i + 1}`} className="h-12" />
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  const client = await clientPromise;
+  const db = client.db();
+
+  const listings = await db.collection('listings').find({}).toArray();
+
+  return {
+    props: {
+      listings: JSON.parse(JSON.stringify(listings.map(listing => ({
+        ...listing,
+        _id: listing._id.toString(),
+        type: listing.type || listing.listingType, // Ensure type is always set
+        listingType: listing.listingType || listing.type, // Ensure listingType is always set
+      })))),
+    },
   };
-  
-  export const getServerSideProps: GetServerSideProps = async () => {
-    const client = await clientPromise;
-    const db = client.db();
-  
-    const listings = await db.collection('listings').find({}).toArray();
-  
-    return {
-      props: {
-        listings: JSON.parse(JSON.stringify(listings)),
-      },
-    };
-  };
-  
-  export default HomePage;
+};
+
+export default HomePage;

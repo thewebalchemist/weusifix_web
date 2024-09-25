@@ -1,3 +1,5 @@
+// pages/api/users/[id].ts
+
 import { adminAuth } from '../../../lib/firebase-admin';
 import clientPromise from '../../../lib/mongodb';
 

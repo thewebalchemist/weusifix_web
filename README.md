@@ -1,3 +1,5 @@
 --- add the current listing
+-- bookmarks
+-- messaging feature
 -- add payments 
 -- switch it

@@ -57,34 +57,42 @@ const ServiceListing = ({ service }) => {
         <h1 className="text-2xl lg:text-5xl font-bold mb-2 text-gray-800 dark:text-gray-300">{service.title}</h1>
         <div className="flex items-center mb-6 text-gray-600 dark:text-gray-500">
           <MapPin className="w-5 h-5 mr-2" />
-          <span>{service.location}</span>
+          <span>{service.address}</span>
         </div>
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="lg:w-2/3">
             <Tabs defaultValue="description">
               <TabsList className="w-full mb-4 rounded-2xl py-4">
                 <TabsTrigger value="description">Overview</TabsTrigger>
-                <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                <TabsTrigger value="availability">Availability</TabsTrigger>
               </TabsList>
               <TabsContent value="description">
                 <p className="text-gray-800 dark:text-gray-300">{service.description}</p>
               </TabsContent>
-              <TabsContent value="reviews">
-                {service.reviews.map((review, index) => (
-                  <div key={index} className="mb-4 p-5 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-3xl">
-                    <div className="flex items-center mb-2">
-                      <Avatar className="w-10 h-10 mr-3">
-                        <AvatarImage src={review.userAvatar} alt={review.userName} />
-                        <AvatarFallback>{review.userName[0]}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold">{review.userName}</p>
-                        <StarRating rating={review.rating} />
+              <TabsContent value="availability">
+                {service.openingHours.enabled ? (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Opening Hours</h3>
+                    {Object.entries(service.openingHours.hours).map(([day, hours]) => (
+                      <div key={day} className="flex justify-between">
+                        <span>{day}</span>
+                        <span>{hours.open} - {hours.close}</span>
                       </div>
-                    </div>
-                    <p className="text-gray-700 dark:text-gray-300">{review.comment}</p>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <p>No specific opening hours provided.</p>
+                )}
+                {service.availability.enabled && (
+                  <div className="mt-8">
+                    <h3 className="text-lg font-semibold mb-4">Custom Availability</h3>
+                    {service.availability.slots.map((slot, index) => (
+                      <div key={index} className="mb-2">
+                        {slot.start} - {slot.end}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
@@ -108,14 +116,15 @@ const ServiceListing = ({ service }) => {
               <CardContent>
                 <div className="flex items-center mb-4">
                   <Avatar className="w-16 h-16 mr-4">
-                    <AvatarImage src={service.providerAvatar} alt={service.providerName} />
-                    <AvatarFallback>{service.providerName[0]}</AvatarFallback>
+                    <AvatarImage src={service.userDetails.profilePic} alt={service.userDetails.email} />
+                    <AvatarFallback>{service.userDetails.email[0]}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="text-lg font-semibold">{service.providerName}</h3>
-                    <StarRating rating={service.providerRating} />
+                    <h3 className="text-lg font-semibold">{service.userDetails.email}</h3>
+                    <p className="text-sm text-gray-500">{service.isIndividual ? 'Individual' : 'Business'}</p>
                   </div>
                 </div>
+                <p className="text-sm text-gray-600 mb-4">{service.userDetails.bio}</p>
                 <div className="flex space-x-2 mb-4">
                   <Button variant="outline" className="flex-1">
                     <MessageCircle className="mr-2 h-4 w-4" /> Chat
@@ -125,12 +134,34 @@ const ServiceListing = ({ service }) => {
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">
-                  <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
-                  <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
-                  <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
+                  {service.userDetails.socialMedia.facebook && (
+                    <a href={service.userDetails.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                      <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
+                    </a>
+                  )}
+                  {service.userDetails.socialMedia.twitter && (
+                    <a href={service.userDetails.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
+                      <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
+                    </a>
+                  )}
+                  {service.userDetails.socialMedia.instagram && (
+                    <a href={service.userDetails.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                      <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
+                    </a>
+                  )}
                 </div>
               </CardContent>
             </Card>
+            {service.bookingEnabled && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Book this Service</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full">Request Booking</Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
@@ -251,7 +282,7 @@ const StayListing = ({ stay }) => {
         <h1 className="text-2xl lg:text-5xl font-bold mb-2 text-gray-800 dark:text-gray-300">{stay.title}</h1>
         <div className="flex items-center mb-6 text-gray-600 dark:text-gray-500">
           <MapPin className="w-5 h-5 mr-2" />
-          <span>{stay.location}</span>
+          <span>{stay.address}</span>
         </div>
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="lg:w-2/3">
@@ -259,7 +290,7 @@ const StayListing = ({ stay }) => {
               <TabsList className="w-full mb-4 rounded-2xl py-4">
                 <TabsTrigger value="description">Overview</TabsTrigger>
                 <TabsTrigger value="amenities">Amenities</TabsTrigger>
-                <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                <TabsTrigger value="availability">Availability</TabsTrigger>
               </TabsList>
               <TabsContent value="description">
                 <p className="text-gray-800 dark:text-gray-300">{stay.description}</p>
@@ -268,28 +299,20 @@ const StayListing = ({ stay }) => {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {stay.amenities.map((amenity, index) => (
                     <div key={index} className="flex items-center p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
-                      
                       <span>{amenity}</span>
                     </div>
                   ))}
                 </div>
               </TabsContent>
-              <TabsContent value="reviews">
-                {stay.reviews.map((review, index) => (
-                  <div key={index} className="mb-4 p-5 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-3xl">
-                    <div className="flex items-center mb-2">
-                      <Avatar className="w-10 h-10 mr-3">
-                        <AvatarImage src={review.userAvatar} alt={review.userName} />
-                        <AvatarFallback>{review.userName[0]}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold">{review.userName}</p>
-                        <StarRating rating={review.rating} />
-                      </div>
+              <TabsContent value="availability">
+                <div className="space-y-4">
+                  {stay.stayAvailability.map((period, index) => (
+                    <div key={index} className="p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
+                      <p>From: {new Date(period.start).toLocaleDateString()}</p>
+                      <p>To: {new Date(period.end).toLocaleDateString()}</p>
                     </div>
-                    <p className="text-gray-700 dark:text-gray-300">{review.comment}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </TabsContent>
             </Tabs>
           </div>
@@ -313,12 +336,12 @@ const StayListing = ({ stay }) => {
               <CardContent className='space-y-4'>
                 <div className="flex items-center">
                   <Avatar className="w-16 h-16 mr-4">
-                    <AvatarImage src={stay.hostAvatar} alt={stay.hostName} />
-                    <AvatarFallback>{stay.hostName[0]}</AvatarFallback>
+                    <AvatarImage src={stay.userDetails.profilePic} alt={stay.userDetails.email} />
+                    <AvatarFallback>{stay.userDetails.email[0]}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="text-lg font-semibold">{stay.hostName}</h3>
-                    <StarRating rating={stay.hostRating} />
+                    <h3 className="text-lg font-semibold">{stay.userDetails.email}</h3>
+                    <p className="text-sm text-gray-500">{stay.userDetails.bio}</p>
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -330,9 +353,21 @@ const StayListing = ({ stay }) => {
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">
-                  <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
-                  <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
-                  <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
+                  {stay.userDetails.socialMedia.facebook && (
+                    <a href={stay.userDetails.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                      <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
+                    </a>
+                  )}
+                  {stay.userDetails.socialMedia.twitter && (
+                    <a href={stay.userDetails.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
+                      <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
+                    </a>
+                  )}
+                  {stay.userDetails.socialMedia.instagram && (
+                    <a href={stay.userDetails.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                      <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
+                    </a>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -341,7 +376,7 @@ const StayListing = ({ stay }) => {
                 <CardTitle>Book this Stay</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold mb-4">${stay.price} / night</p>
+                <p className="text-2xl font-bold mb-4">{stay.priceCurrency} {stay.stayPrice} / night</p>
                 <div className="space-y-4">
                   <div className='space-y-4'>
                     <label className="block text-lg font-medium text-gray-700 dark:text-gray-300">Check-in</label>
@@ -362,10 +397,11 @@ const StayListing = ({ stay }) => {
                     />
                   </div>
                 </div>
-                <Button className="w-full mt-4">Book Now</Button>
+                <Button className="w-full mt-4" disabled={!stay.bookingEnabled}>
+                  {stay.bookingEnabled ? 'Book Now' : 'Booking Unavailable'}
+                </Button>
               </CardContent>
             </Card>
-            
           </div>
         </div>
       </div>
