@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Star, MapPin, Clock, Users, BedDouble, Wifi, Car, Waves, Snowflake, MessageCircle, PhoneCall, Facebook, Twitter, Instagram, Share, Heart } from 'lucide-react';
+import { Star, MapPin, Clock, Users, BedDouble, Wifi, Car, Waves, Snowflake, MessageCircle, PhoneCall, Facebook, Twitter, Instagram, Share, Heart, User, Mail } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -117,7 +117,7 @@ const ServiceListing = ({ service }) => {
                 <div className="flex items-center mb-4">
                   <Avatar className="w-16 h-16 mr-4">
                     <AvatarImage src={service.userDetails.profilePic} alt={service.userDetails.email} />
-                    <AvatarFallback>{service.userDetails.email[0]}</AvatarFallback>
+                    <AvatarFallback><User /></AvatarFallback>
                   </Avatar>
                   <div>
                   <h3 className="text-lg font-semibold">{service.userDetails.name}</h3>
@@ -126,13 +126,10 @@ const ServiceListing = ({ service }) => {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 mb-4">{service.userDetails.bio}</p>
-                <div className="flex space-x-2 mb-4">
-                  
-                  
-                  <Button 
+                <div className="flex space-x-2 mb-4"><Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `tel:${userPhone}`}
+                    onClick={() => window.location.href = `tel:${service.userDetails.email}`}
                   >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
                   </Button>
@@ -140,7 +137,7 @@ const ServiceListing = ({ service }) => {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `mailto:${userEmail}`}
+                    onClick={() => window.location.href = `mailto:${service.userDetails.phone}`}
                   >
                     <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
@@ -230,29 +227,50 @@ const EventListing = ({ event }) => {
               <CardHeader>
                 <CardTitle>Organizer</CardTitle>
               </CardHeader>
-              <CardContent className='space-y-4'>
-                <div className="flex items-center">
+              <CardContent>
+                <div className="flex items-center mb-4">
                   <Avatar className="w-16 h-16 mr-4">
-                    <AvatarImage src={event.organizerAvatar} alt={event.organizerName} />
-                    <AvatarFallback>{event.organizerName[0]}</AvatarFallback>
+                    <AvatarImage src={event.userDetails.profilePic} alt={event.userDetails.name} />
+                    <AvatarFallback><User /></AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="text-lg font-semibold">{event.organizerName}</h3>
-                    <p className="text-sm text-gray-500">{event.organizerDescription}</p>
+                  <h3 className="text-lg font-semibold">{event.userDetails.name}</h3>
+                    <h3 className="text-lg font-semibold">{event.userDetails.email}</h3>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <Button variant="outline" className="flex-1">
-                    <MessageCircle className="mr-2 h-4 w-4" /> Chat
-                  </Button>
-                  <Button variant="outline" className="flex-1">
+                <p className="text-sm text-gray-600 mb-4">{event.userDetails.bio}</p>
+                <div className="flex space-x-2 mb-4"><Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `tel:${event.userDetails.email}`}
+                  >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `mailto:${event.userDetails.phone}`}
+                  >
+                    <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">
-                  <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
-                  <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
-                  <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
+                  {event.userDetails.socialMedia.facebook && (
+                    <a href={event.userDetails.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                      <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
+                    </a>
+                  )}
+                  {event.userDetails.socialMedia.twitter && (
+                    <a href={event.userDetails.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
+                      <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
+                    </a>
+                  )}
+                  {event.userDetails.socialMedia.instagram && (
+                    <a href={event.userDetails.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                      <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
+                    </a>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -345,23 +363,32 @@ const StayListing = ({ stay }) => {
               <CardHeader>
                 <CardTitle>Host</CardTitle>
               </CardHeader>
-              <CardContent className='space-y-4'>
-                <div className="flex items-center">
+              <CardContent>
+                <div className="flex items-center mb-4">
                   <Avatar className="w-16 h-16 mr-4">
-                    <AvatarImage src={stay.userDetails.profilePic} alt={stay.userDetails.email} />
-                    <AvatarFallback>{stay.userDetails.email[0]}</AvatarFallback>
+                    <AvatarImage src={stay.userDetails.profilePic} alt={stay.userDetails.name} />
+                    <AvatarFallback><User /></AvatarFallback>
                   </Avatar>
                   <div>
+                  <h3 className="text-lg font-semibold">{stay.userDetails.name}</h3>
                     <h3 className="text-lg font-semibold">{stay.userDetails.email}</h3>
-                    <p className="text-sm text-gray-500">{stay.userDetails.bio}</p>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <Button variant="outline" className="flex-1">
-                    <MessageCircle className="mr-2 h-4 w-4" /> Chat
-                  </Button>
-                  <Button variant="outline" className="flex-1">
+                <p className="text-sm text-gray-600 mb-4">{stay.userDetails.bio}</p>
+                <div className="flex space-x-2 mb-4"><Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `tel:${stay.userDetails.email}`}
+                  >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `mailto:${stay.userDetails.phone}`}
+                  >
+                    <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">
@@ -489,30 +516,50 @@ const ExperienceListing = ({ experience }) => {
               <CardHeader>
                 <CardTitle>Host</CardTitle>
               </CardHeader>
-              <CardContent className='space-y-4'>
-                <div className="flex items-center">
+              <CardContent>
+                <div className="flex items-center mb-4">
                   <Avatar className="w-16 h-16 mr-4">
-                    <AvatarImage src={experience.hostAvatar} alt={experience.hostName} />
-                    <AvatarFallback>{experience.hostName[0]}</AvatarFallback>
+                    <AvatarImage src={experience.userDetails.profilePic} alt={experience.userDetails.name} />
+                    <AvatarFallback><User /></AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="text-lg font-semibold">{experience.hostName}</h3>
-                    <StarRating rating={experience.hostRating} />
-                    <p className="text-sm text-gray-500 mt-1">{experience.hostBio}</p>
+                  <h3 className="text-lg font-semibold">{experience.userDetails.name}</h3>
+                    <h3 className="text-lg font-semibold">{experience.userDetails.email}</h3>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <Button variant="outline" className="flex-1">
-                    <MessageCircle className="mr-2 h-4 w-4" /> Chat
-                  </Button>
-                  <Button variant="outline" className="flex-1">
+                <p className="text-sm text-gray-600 mb-4">{experience.userDetails.bio}</p>
+                <div className="flex space-x-2 mb-4"><Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `tel:${experience.userDetails.email}`}
+                  >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `mailto:${experience.userDetails.phone}`}
+                  >
+                    <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">
-                  <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
-                  <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
-                  <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
+                  {experience.userDetails.socialMedia.facebook && (
+                    <a href={experience.userDetails.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                      <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
+                    </a>
+                  )}
+                  {experience.userDetails.socialMedia.twitter && (
+                    <a href={experience.userDetails.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
+                      <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
+                    </a>
+                  )}
+                  {experience.userDetails.socialMedia.instagram && (
+                    <a href={experience.userDetails.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                      <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
+                    </a>
+                  )}
                 </div>
               </CardContent>
             </Card>
