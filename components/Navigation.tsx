@@ -113,14 +113,26 @@ const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onAddListi
           </div>
 
           {/* Right: Add Listing Button, Theme Toggle, and Profile */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 lg:space-x-4">
             <Button
-              className="hidden md:inline-flex text-white bg-primary hover:text-gray-200 border-primary hover:bg-primary/70 px-5 py-3"
+              className=" inline-flex h-8 lg:h-11 text-xs md:text-md text-white bg-primary hover:text-gray-200 border-primary hover:bg-primary/70 px-2 py-1 md:px-5 md:py-3"
               onClick={() => router.push('/add-listing')}
               variant="outline"
             >
               Add Listing
             </Button>
+            
+            {user ? (
+              renderProfileMenu()
+            ) : (
+              <Button
+                onClick={() => setIsAuthDialogOpen(true)}
+                variant="ghost"
+                className="hidden md:inline-flex text-gray-800 dark:text-gray-300"
+              >
+                Log In
+              </Button>
+            )}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -131,17 +143,6 @@ const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onAddListi
                 <Moon className="w-6 h-6" />
               )}
             </button>
-            {user ? (
-              renderProfileMenu()
-            ) : (
-              <Button
-                onClick={() => setIsAuthDialogOpen(true)}
-                variant="ghost"
-                className="text-gray-800 dark:text-gray-300"
-              >
-                Log In
-              </Button>
-            )}
             {/* Mobile menu button */}
             <div className="md:hidden">
               <DropdownMenu>

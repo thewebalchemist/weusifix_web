@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import clientPromise from '@/lib/mongodb';
 import Link from 'next/link';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import HomepageSections from '@/components/HomepageSections';
 
 interface Listing {
   _id: string;
@@ -554,16 +555,8 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
             </section>
   
             {/* Partners Section */}
-            <section className="p-2 lg:p-10 mt-10">
-              <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Our Partners</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8">
-                {/* Replace these with actual partner logos */}
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg flex items-center justify-center">
-                    <img src={`/placeholder-logo-${i + 1}.png`} alt={`Partner ${i + 1}`} className="h-12" />
-                  </div>
-                ))}
-              </div>
+            <section className="flex-grow">
+            <HomepageSections />
             </section>
           </div>
         </main>

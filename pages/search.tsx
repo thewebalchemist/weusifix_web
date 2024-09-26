@@ -12,7 +12,7 @@ interface Listing {
   type: 'service' | 'event' | 'stay' | 'experience';
   title: string;
   description: string;
-  location: string;
+  location: string | { city?: string; country?: string } | undefined;
   price: number;
   images: string[];
   eventDate?: string;
@@ -59,9 +59,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ listings, initialQuery }) => {
     } else {
       // Filter based on search query
       filtered = listings.filter(listing =>
-        listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        listing.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        listing.location.toLowerCase().includes(searchQuery.toLowerCase())
+        (typeof listing.title === 'string' && listing.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (typeof listing.description === 'string' && listing.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (typeof listing.location === 'string' && listing.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (typeof listing.location === 'object' && listing.location && 
+          ((listing.location.city && listing.location.city.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (listing.location.country && listing.location.country.toLowerCase().includes(searchQuery.toLowerCase()))))
       ).slice(0, 10);
     }
     setFilteredListings(filtered);
@@ -76,6 +79,14 @@ const SearchPage: React.FC<SearchPageProps> = ({ listings, initialQuery }) => {
   };
 
   const renderCard = (listing: Listing) => {
+    const getLocationString = (location: Listing['location']): string => {
+      if (typeof location === 'string') return location;
+      if (typeof location === 'object' && location) {
+        return [location.city, location.country].filter(Boolean).join(', ');
+      }
+      return 'Location not specified';
+    };
+
     return (
       <Link href={`/${listing.type}s/${listing.slug}`} key={listing._id}>
         <div className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer">
@@ -91,7 +102,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ listings, initialQuery }) => {
               {listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}
             </span>
             <h2 className='mt-2 text-lg font-semibold text-gray-800 dark:text-white'>{listing.title}</h2>
-            <p className='text-sm text-gray-500 dark:text-gray-400'>{listing.location}</p>
+            <p className='text-sm text-gray-500 dark:text-gray-400'>{getLocationString(listing.location)}</p>
             <p className='mt-2 text-lg font-bold text-gray-900 dark:text-white'>${listing.price}</p>
             {listing.type === 'event' && (
               <div className="mt-2 flex items-center text-sm text-gray-500">
