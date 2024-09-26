@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import clientPromise from '@/lib/mongodb';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
+import toast from 'react-hot-toast';
 
 interface Listing {
   _id: string;
@@ -38,8 +39,9 @@ const subCategories = {
   Experiences: ['City Tours', 'Adventures', 'Culinary Experiences', 'Wellness'],
 };
 
-const HomePage: React.FC<HomePageProps> = ({ listings }) => {
+const HomePage: React.FC<HomePageProps> = () => {
   const router = useRouter();
+  const [listings, setListings] = useState<Listing[]>([]);
   const [activeTab, setActiveTab] = useState('Services');
   const [activeSubcategory, setActiveSubcategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,23 +50,40 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
   const [endDate, setEndDate] = useState('');
   const [guests, setGuests] = useState(1);
   const [filteredListings, setFilteredListings] = useState(listings);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    filterListings();
-  }, [activeTab, activeSubcategory]);
+    const fetchListings = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/listings');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Validate listings
+        const validListings = data.filter(listing => 
+          listing && typeof listing.type === 'string' && listing.type.length > 0
+        );
 
-  const filterListings = () => {
-    let filtered = listings.filter(listing => listing.type.toLowerCase() === activeTab.toLowerCase().slice(0, -1));
-    if (activeSubcategory !== 'All') {
-      filtered = filtered.filter(listing => 
-        listing.serviceCategory === activeSubcategory || 
-        listing.stayType === activeSubcategory || 
-        listing.eventType === activeSubcategory || 
-        listing.experienceType === activeSubcategory
-      );
-    }
-    setFilteredListings(filtered);
-  };
+        if (validListings.length < data.length) {
+          console.warn(`Filtered out ${data.length - validListings.length} invalid listings`);
+        }
+
+        setListings(validListings);
+      } catch (error) {
+        console.error('Error fetching listings:', error);
+        setError('Failed to fetch listings. Please try again later.');
+        toast.error('Failed to load listings');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +146,12 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
   };
 
   const renderCard = (listing: Listing) => {
+    const capitalizeFirstLetter = (string) => {
+      if (typeof string !== 'string' || string.length === 0) {
+        return 'Unknown';
+      }
+      return string.charAt(0).toUpperCase() + string.slice(1);
+    };
     return (
       <Link href={`/${listing.type}s/${listing.slug}`} key={listing._id}>
         <div className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer">
@@ -139,7 +164,7 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
           </div>
           <div className="p-4">
             <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
-              {listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}
+            {capitalizeFirstLetter(listing.type)}
             </span>
             <h2 className='mt-2 text-lg font-semibold text-gray-800 dark:text-white'>{listing.title}</h2>
             <p className='text-sm text-gray-500 dark:text-gray-400'>{listing.location}</p>
