@@ -6,19 +6,21 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 
 interface CustomUser extends Omit<FirebaseUser, 'phoneNumber'> {
-  role?: string;
   phoneNumber?: string;
 }
 
 interface AuthContextType {
   user: CustomUser | null;
   loading: boolean;
-  signup: (email: string, password: string, role: string, phoneNumber: string, name: string) => Promise<void>;
+  signup: (email: string, password: string, phoneNumber: string, name: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -44,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           if (response.ok) {
             const userData = await response.json();
-            setUser({ ...firebaseUser, role: userData.role, phoneNumber: userData.phoneNumber } as CustomUser);
+            setUser({ ...firebaseUser, phoneNumber: userData.phoneNumber } as CustomUser);
           } else {
             setUser(firebaseUser as CustomUser);
           }
@@ -61,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  async function signup(email: string, password: string, role: string, phoneNumber: string, name: string) {
+  async function signup(email: string, password: string, phoneNumber: string, name: string) {
     const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(newUser, { displayName: name });
     const token = await newUser.getIdToken();
@@ -73,7 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       body: JSON.stringify({ 
         email, 
-        role,
         phoneNumber,
         name
       }),
@@ -94,6 +95,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function signInWithGoogle() {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/users/${user.uid}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          email: user.email, 
+          name: user.displayName,
+          phoneNumber: user.phoneNumber
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to create/update user in database');
+      }
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      throw error;
+    }
+  }
+
   async function logout() {
     try {
       await signOut(auth);
@@ -108,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signup,
     login,
+    signInWithGoogle,
     logout
   };
 

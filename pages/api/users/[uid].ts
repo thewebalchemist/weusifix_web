@@ -1,7 +1,5 @@
-// pages/api/users/[uid].ts
-
 import { NextApiRequest, NextApiResponse } from 'next';
-import { adminAuth } from '@/lib/firebase-admin'; // Changed this line
+import { adminAuth } from '@/lib/firebase-admin';
 import { getCollection } from '@/lib/mongodb';
 
 async function verifyToken(req: NextApiRequest): Promise<string | null> {
@@ -12,7 +10,7 @@ async function verifyToken(req: NextApiRequest): Promise<string | null> {
 
   const token = authHeader.split('Bearer ')[1];
   try {
-    const decodedToken = await adminAuth.verifyIdToken(token); // Changed this line
+    const decodedToken = await adminAuth.verifyIdToken(token);
     return decodedToken.uid;
   } catch (error) {
     console.error('Error verifying token:', error);
@@ -27,12 +25,11 @@ async function getUser(uid: string) {
 
 async function createOrUpdateUser(uid: string, userData: any) {
   const usersCollection = await getCollection('users');
-  const { email, role, phoneNumber, name } = userData;
+  const { email, phoneNumber, name } = userData;
   
   const updateData = {
     uid,
     email,
-    role,
     phoneNumber,
     name,
     updatedAt: new Date()
@@ -82,11 +79,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     case 'POST':
       try {
-        const { email, role, phoneNumber, name } = req.body;
-        if (!email || !role) {
-          return res.status(400).json({ error: 'Email and role are required' });
+        const { email, phoneNumber, name } = req.body;
+        if (!email) {
+          return res.status(400).json({ error: 'Email is required' });
         }
-        const updatedUser = await createOrUpdateUser(uid, { email, role, phoneNumber, name });
+        const updatedUser = await createOrUpdateUser(uid, { email, phoneNumber, name });
         res.status(200).json(updatedUser);
       } catch (error) {
         console.error('Error creating/updating user:', error);

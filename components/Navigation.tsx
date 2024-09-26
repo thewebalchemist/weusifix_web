@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Button } from './ui/button';
 import { useTheme } from '../contexts/ThemeContext';
-import { Moon, Sun, Menu, X, User } from 'lucide-react';
+import { Moon, Sun, Menu, X, User, CirclePlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   DropdownMenu,
@@ -83,11 +83,9 @@ const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onAddListi
         <DropdownMenuItem onSelect={() => router.push('/dashboard')}>
           Profile
         </DropdownMenuItem>
-        {user?.role === 'provider' && (
-          <DropdownMenuItem onSelect={() => router.push('/dashboard')}>
+        <DropdownMenuItem onSelect={() => router.push('/dashboard')}>
             Your Listings
           </DropdownMenuItem>
-        )}
         <DropdownMenuItem onSelect={() => router.push('/dashboard')}>
           Favorites
         </DropdownMenuItem>
@@ -115,11 +113,13 @@ const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onAddListi
           {/* Right: Add Listing Button, Theme Toggle, and Profile */}
           <div className="flex items-center space-x-2 lg:space-x-4">
             <Button
-              className=" inline-flex h-8 lg:h-11 text-xs md:text-md text-white bg-primary hover:text-gray-200 border-primary hover:bg-primary/70 px-2 py-1 md:px-5 md:py-3"
+              className=" inline-flex h-9 lg:h-11 text-sm text-white bg-primary hover:text-gray-200 border-primary hover:bg-primary/70 px-2 py-1 md:px-5 md:py-3"
               onClick={() => router.push('/add-listing')}
               variant="outline"
             >
-              Add Listing
+              
+              Create
+              <CirclePlus className='ml-2 w-4 h-4 lg:w-5 lg:h-5' />
             </Button>
             
             {user ? (

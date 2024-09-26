@@ -15,7 +15,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Checkbox } from '@/components/ui/checkbox';
 import AuthDialog from '@/components/AuthDialog';
 import { useDropzone } from 'react-dropzone';
-import { checkUserRole, fetchUserDetails } from '@/lib/userUtils';
+import { fetchUserDetails, UserData } from '../lib/userUtils';
 
 // Dynamically import the Map component
 const DynamicMap = dynamic(() => import('@/components/MapComponent'), {
@@ -95,7 +95,7 @@ const AddListingForm = () => {
         instagram: '',
         youtube: ''
       }
-    },
+    } as UserData,
     serviceCategory: '',
     eventDate: null,
     eventTime: null,
@@ -135,13 +135,6 @@ const AddListingForm = () => {
 
       console.log('User is authenticated:', user);
       try {
-        const isProvider = await checkUserRole(user);
-        if (!isProvider) {
-          toast.error('Only service providers can add listings.');
-          router.push('/dashboard');
-          return;
-        }
-
         const userData = await fetchUserDetails(user);
         if (userData) {
           setFormData(prevData => ({
@@ -154,8 +147,8 @@ const AddListingForm = () => {
           setIsFirstTimeListing(!userData.hasListings);
         }
       } catch (error) {
-        console.error('Error checking user role:', error);
-        toast.error('Failed to verify user permissions. Please try again.');
+        console.error('Error fetching user details:', error);
+        toast.error('Failed to fetch user details. Please try again.');
       } finally {
         setIsLoading(false);
       }

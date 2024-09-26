@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
 import { auth } from '../lib/firebase';
 
-const ProviderDashboard = () => {
+const UserDashboard = () => {
   const { user, loading } = useFirebaseAuth();
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,49 +32,18 @@ const ProviderDashboard = () => {
 
       console.log('User is authenticated:', user);
       try {
-        await checkUserRole();
         await fetchUserDetails();
         await fetchListings();
         setIsLoading(false);
       } catch (error) {
-        console.error('Error checking user role:', error);
-        toast.error('Failed to verify user permissions. Please try again.');
+        console.error('Error fetching user data:', error);
+        toast.error('Failed to load user data. Please try again.');
         setIsLoading(false);
       }
     };
 
     checkAuth();
   }, [user, loading, router]);
-
-  const checkUserRole = async () => {
-    if (!user?.uid) {
-      console.error('User ID is missing');
-      throw new Error('User ID is missing');
-    }
-
-    const token = await user.getIdToken();
-    const response = await fetch(`/api/users/${user.uid}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    if (!response.ok) {
-      console.error('Failed to fetch user role:', response.statusText);
-      throw new Error('Failed to fetch user role');
-    }
-
-    const userData = await response.json();
-    console.log('User data:', userData);
-
-    if (userData.role !== 'provider') {
-      console.log('User is not a provider');
-      toast.error('You are not authorized to access this dashboard');
-      router.push('/');
-      throw new Error('User is not authorized to access this dashboard');
-    }
-
-    console.log('User is a provider');
-  };
 
   const fetchUserDetails = async () => {
     try {
@@ -110,7 +79,6 @@ const ProviderDashboard = () => {
       console.error('Error fetching listings:', error);
     }
   };
-
 
   const handleDeleteListing = async (listingId) => {
     if (window.confirm('Are you sure you want to delete this listing?')) {
@@ -381,7 +349,7 @@ const ProviderDashboard = () => {
         </nav>
       </aside>
       <main className="flex-1 p-8">
-        <h1 className="text-3xl font-bold mb-6">Provider Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-6">User Dashboard</h1>
         {activeTab === 'profile' && renderProfile()}
         {activeTab === 'listings' && renderListings()}
         {activeTab === 'bookings' && renderBookings()}
@@ -397,4 +365,4 @@ const ProviderDashboard = () => {
   );
 };
 
-export default ProviderDashboard;
+export default UserDashboard;
