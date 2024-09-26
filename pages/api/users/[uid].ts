@@ -1,56 +1,88 @@
-// pages/api/users/[id].ts
+// pages/api/users/[uid].ts
 
-import { adminAuth } from '../../../lib/firebase-admin';
-import clientPromise from '../../../lib/mongodb';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { auth } from '@/lib/firebase-admin';
+import { getCollection } from '@/lib/mongodb';
 
-export default async function handler(req, res) {
- // Verify Firebase ID token
- const authHeader = req.headers.authorization;
- if (!authHeader || !authHeader.startsWith('Bearer ')) {
-   return res.status(401).json({ error: 'Unauthorized' });
- }
+async function verifyToken(req: NextApiRequest): Promise<string | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
 
- const token = authHeader.split('Bearer ')[1];
- try {
-   const decodedToken = await adminAuth.verifyIdToken(token);
-   req.user = decodedToken;
- } catch (error) {
-   console.error('Error verifying token:', error);
-   return res.status(401).json({ error: 'Invalid token' });
- }
+  const token = authHeader.split('Bearer ')[1];
+  try {
+    const decodedToken = await auth.verifyIdToken(token);
+    return decodedToken.uid;
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    return null;
+  }
+}
 
-  const client = await clientPromise;
-  const db = client.db();
+async function getUser(uid: string) {
+  const usersCollection = await getCollection('users');
+  return usersCollection.findOne({ uid });
+}
+
+async function createUser(uid: string, email: string, role: string) {
+  const usersCollection = await getCollection('users');
+  const newUser = { 
+    uid, 
+    email, 
+    role,
+    createdAt: new Date()
+  };
+  await usersCollection.insertOne(newUser);
+  return newUser;
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const authenticatedUid = await verifyToken(req);
+  if (!authenticatedUid) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const { uid } = req.query;
+  if (typeof uid !== 'string') {
+    return res.status(400).json({ error: 'Invalid UID' });
+  }
 
-  if (req.method === 'GET') {
-    try {
-      const user = await db.collection('users').findOne({ uid });
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+  // Ensure the authenticated user is only accessing their own data
+  if (authenticatedUid !== uid) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  switch (req.method) {
+    case 'GET':
+      try {
+        const user = await getUser(uid);
+        if (!user) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+        res.status(200).json(user);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        res.status(500).json({ error: 'Failed to fetch user' });
       }
-      res.status(200).json(user);
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      res.status(500).json({ error: 'Failed to fetch user' });
-    }
-  } else if (req.method === 'PUT') {
-    try {
-      const updates = req.body;
-      const result = await db.collection('users').updateOne(
-        { uid },
-        { $set: updates }
-      );
-      if (result.matchedCount === 0) {
-        return res.status(404).json({ error: 'User not found' });
+      break;
+
+    case 'POST':
+      try {
+        const { email, role } = req.body;
+        if (!email || !role) {
+          return res.status(400).json({ error: 'Email and role are required' });
+        }
+        const newUser = await createUser(uid, email, role);
+        res.status(201).json(newUser);
+      } catch (error) {
+        console.error('Error creating user:', error);
+        res.status(500).json({ error: 'Failed to create user' });
       }
-      res.status(200).json({ message: 'User updated successfully' });
-    } catch (error) {
-      console.error('Error updating user:', error);
-      res.status(500).json({ error: 'Failed to update user' });
-    }
-  } else {
-    res.setHeader('Allow', ['GET', 'PUT']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+      break;
+
+    default:
+      res.setHeader('Allow', ['GET', 'POST']);
+      res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }

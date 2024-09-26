@@ -122,19 +122,24 @@ const AddListingForm = () => {
   useEffect(() => {
     const checkAuth = async () => {
       setIsLoading(true);
-
+  
       if (loading) return;
-
+  
       if (!user) {
         console.log('User is not authenticated');
         setIsAuthDialogOpen(true);
         setIsLoading(false);
         return;
       }
-
+  
       console.log('User is authenticated:', user);
       try {
-        await checkUserRole(user.uid);
+        const isProvider = await checkUserRole(user.uid);
+        if (!isProvider) {
+          toast.error('Only service providers can add listings.');
+          router.push('/dashboard');
+          return;
+        }
         await fetchUserDetails(user.uid);
         setIsLoading(false);
       } catch (error) {
@@ -143,10 +148,34 @@ const AddListingForm = () => {
         setIsLoading(false);
       }
     };
-
+  
     checkAuth();
   }, [user, loading, router]);
-
+  
+  const checkUserRole = async (uid) => {
+    const token = await user.getIdToken();
+    const response = await fetch(`/api/users?uid=${uid}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (!response.ok) {
+      console.error('Failed to fetch user role:', response.statusText);
+      throw new Error('Failed to fetch user role');
+    }
+  
+    const userData = await response.json();
+    console.log('User data:', userData);
+  
+    if (userData.role !== 'provider') {
+      console.log('User is not a provider');
+      return false;
+    }
+  
+    console.log('User is a provider');
+    return true;
+  };
+  
   const fetchUserDetails = async (uid) => {
     try {
       const token = await user.getIdToken();
@@ -169,31 +198,6 @@ const AddListingForm = () => {
     } catch (error) {
       console.error('Error fetching user details:', error);
     }
-  };
-
-  const checkUserRole = async (uid) => {
-    const token = await user.getIdToken();
-    const response = await fetch(`/api/users?uid=${uid}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    if (!response.ok) {
-      console.error('Failed to fetch user role:', response.statusText);
-      throw new Error('Failed to fetch user role');
-    }
-
-    const userData = await response.json();
-    console.log('User data:', userData);
-
-    if (userData.role !== 'provider') {
-      console.log('User is not a provider');
-      toast.error('You are not authorized to add listings');
-      router.push('/dashboard');
-      throw new Error('User is not authorized to add listings');
-    }
-
-    console.log('User is a provider');
   };
 
   const handleInputChange = (e) => {

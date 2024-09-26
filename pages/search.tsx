@@ -21,6 +21,10 @@ interface Listing {
   checkOutTime?: string;
   duration?: string;
   slug: string;
+  serviceCategory?: string;
+  stayType?: string;
+  eventType?: string;
+  experienceType?: string;
 }
 
 interface SearchPageProps {
@@ -49,23 +53,32 @@ const SearchPage: React.FC<SearchPageProps> = ({
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(initialEndDate);
   const [guests, setGuests] = useState(initialGuests);
+  const [filteredListings, setFilteredListings] = useState(listings);
 
-  const filteredListings = listings.filter(listing => {
-    const matchesCategory = listing.type === activeCategory.toLowerCase().slice(0, -1) || activeCategory === 'All';
-    const matchesQuery = listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         listing.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesLocation = listing.location.toLowerCase().includes(searchLocation.toLowerCase());
-    
-    let matchesDates = true;
-    if (activeCategory === 'Stays' || activeCategory === 'Events' || activeCategory === 'Experiences') {
-      const listingDate = new Date(listing.eventDate || listing.checkInTime || '');
-      const searchStart = new Date(startDate);
-      const searchEnd = new Date(endDate);
-      matchesDates = (!startDate || listingDate >= searchStart) && (!endDate || listingDate <= searchEnd);
-    }
+  useEffect(() => {
+    filterListings();
+  }, [searchQuery, searchLocation, activeCategory, startDate, endDate, guests]);
 
-    return matchesCategory && matchesQuery && matchesLocation && matchesDates;
-  });
+  const filterListings = () => {
+    const filtered = listings.filter(listing => {
+      const matchesCategory = listing.type === activeCategory.toLowerCase().slice(0, -1) || activeCategory === 'All';
+      const matchesQuery = listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           listing.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesLocation = listing.location.toLowerCase().includes(searchLocation.toLowerCase());
+      
+      let matchesDates = true;
+      if (activeCategory !== 'Services' && startDate && endDate) {
+        const listingDate = new Date(listing.eventDate || listing.checkInTime || '');
+        const searchStart = new Date(startDate);
+        const searchEnd = new Date(endDate);
+        matchesDates = listingDate >= searchStart && listingDate <= searchEnd;
+      }
+
+      return matchesCategory && matchesQuery && matchesLocation && matchesDates;
+    });
+
+    setFilteredListings(filtered);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +92,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
         endDate,
         guests
       }
-    });
+    }, undefined, { shallow: true });
   };
 
   const renderCard = (listing: Listing) => {
@@ -152,7 +165,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
             <select
               value={activeCategory}
               onChange={(e) => setActiveCategory(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              className="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="All">All Categories</option>
               <option value="Services">Services</option>
@@ -160,7 +173,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
               <option value="Events">Events</option>
               <option value="Experiences">Experiences</option>
             </select>
-            {(activeCategory === 'Stays' || activeCategory === 'Events' || activeCategory === 'Experiences') && (
+            {activeCategory !== 'Services' && (
               <>
                 <Input
                   type="date"
@@ -209,7 +222,12 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   const client = await clientPromise;
   const db = client.db();
 
-  const listings = await db.collection('listings').find({}).toArray();
+  let filter = {};
+  if (category && category !== 'All') {
+    filter = { type: category.toString().toLowerCase().slice(0, -1) };
+  }
+
+  const listings = await db.collection('listings').find(filter).toArray();
 
   return {
     props: {

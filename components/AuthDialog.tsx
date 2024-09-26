@@ -5,9 +5,9 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import toast from 'react-hot-toast';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { Eye, EyeOff } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AuthDialogProps {
   isOpen: boolean;
@@ -15,47 +15,51 @@ interface AuthDialogProps {
 }
 
 const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
+  const { signup, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await login(email, password);
       toast.success('Logged in successfully!');
       onClose();
     } catch (error) {
-      toast.error('Failed to log in');
+      toast.error('Failed to log in. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      const token = await user.getIdToken();
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ uid: user.uid, email: user.email, role }),
-      });
-
-      if (response.ok) {
-        toast.success('Account created successfully!');
-        onClose();
-      } else {
-        toast.error('Failed to create account');
-      }
+      await signup(email, password, role, phoneNumber, name);
+      toast.success('Account created successfully!');
+      onClose();
     } catch (error) {
-      toast.error('Error creating account');
+      toast.error('Error creating account. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+  const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -81,21 +85,40 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   required
                 />
               </div>
-              <div>
+              <div className="relative">
                 <Label htmlFor="loginPassword">Password</Label>
                 <Input
                   id="loginPassword"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-9 text-gray-500"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
-              <Button type="submit" className="w-full">Log In</Button>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Logging in...' : 'Log In'}
+              </Button>
             </form>
           </TabsContent>
           <TabsContent value="signup">
             <form onSubmit={handleSignup} className="space-y-4">
+              <div>
+                <Label htmlFor="signupName">Name</Label>
+                <Input
+                  id="signupName"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
               <div>
                 <Label htmlFor="signupEmail">Email</Label>
                 <Input
@@ -106,13 +129,47 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   required
                 />
               </div>
-              <div>
+              <div className="relative">
                 <Label htmlFor="signupPassword">Password</Label>
                 <Input
                   id="signupPassword"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-9 text-gray-500"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              <div className="relative">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={toggleConfirmPasswordVisibility}
+                  className="absolute right-3 top-9 text-gray-500"
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              <div>
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
                   required
                 />
               </div>
@@ -128,7 +185,9 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full">Sign Up</Button>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Signing up...' : 'Sign Up'}
+              </Button>
             </form>
           </TabsContent>
         </Tabs>

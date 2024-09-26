@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, Collection } from 'mongodb'
 
 const uri = process.env.MONGODB_URI
 const options = {}
@@ -25,5 +25,10 @@ export default clientPromise
 
 export async function getDatabase() {
   const client = await clientPromise
-  return client.db('test')  // or 'myFirstDatabase', whichever you're using
+  return client.db(process.env.MONGODB_DB_NAME || 'test')
+}
+
+export async function getCollection(collectionName: string): Promise<Collection> {
+  const db = await getDatabase()
+  return db.collection(collectionName)
 }
