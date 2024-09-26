@@ -15,6 +15,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Checkbox } from '@/components/ui/checkbox';
 import AuthDialog from '@/components/AuthDialog';
 import { useDropzone } from 'react-dropzone';
+import { checkUserRole, fetchUserDetails } from '@/lib/userUtils';
 
 // Dynamically import the Map component
 const DynamicMap = dynamic(() => import('@/components/MapComponent'), {
@@ -122,81 +123,52 @@ const AddListingForm = () => {
   useEffect(() => {
     const checkAuth = async () => {
       setIsLoading(true);
-  
+
       if (loading) return;
-  
+
       if (!user) {
         console.log('User is not authenticated');
         setIsAuthDialogOpen(true);
         setIsLoading(false);
         return;
       }
-  
+
       console.log('User is authenticated:', user);
       try {
-        const isProvider = await checkUserRole(user.uid);
+        const isProvider = await checkUserRole(user);
         if (!isProvider) {
           toast.error('Only service providers can add listings.');
           router.push('/dashboard');
           return;
         }
-        await fetchUserDetails(user.uid);
-        setIsLoading(false);
+
+        const userData = await fetchUserDetails(user);
+        if (userData) {
+          setFormData(prevData => ({
+            ...prevData,
+            userDetails: {
+              ...prevData.userDetails,
+              ...userData
+            }
+          }));
+          setIsFirstTimeListing(!userData.hasListings);
+        }
       } catch (error) {
         console.error('Error checking user role:', error);
         toast.error('Failed to verify user permissions. Please try again.');
+      } finally {
         setIsLoading(false);
       }
     };
-  
+
     checkAuth();
   }, [user, loading, router]);
-  
-  const checkUserRole = async (uid) => {
-    const token = await user.getIdToken();
-    const response = await fetch(`/api/users?uid=${uid}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    if (!response.ok) {
-      console.error('Failed to fetch user role:', response.statusText);
-      throw new Error('Failed to fetch user role');
-    }
-  
-    const userData = await response.json();
-    console.log('User data:', userData);
-  
-    if (userData.role !== 'provider') {
-      console.log('User is not a provider');
-      return false;
-    }
-  
-    console.log('User is a provider');
-    return true;
-  };
-  
-  const fetchUserDetails = async (uid) => {
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch(`/api/users?uid=${uid}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const userData = await response.json();
-        setFormData(prevData => ({
-          ...prevData,
-          userDetails: {
-            ...prevData.userDetails,
-            ...userData.userDetails
-          }
-        }));
-        setIsFirstTimeListing(!userData.hasListings);
-      }
-    } catch (error) {
-      console.error('Error fetching user details:', error);
+
+  const handleAuthDialogClose = () => {
+    setIsAuthDialogOpen(false);
+    if (!user) {
+      // If the user is still not authenticated after closing the dialog, redirect them
+      router.push('/dashboard');
     }
   };
 
@@ -235,9 +207,6 @@ const AddListingForm = () => {
     }));
   };
 
-  const handleAuthDialogClose = () => {
-    setIsAuthDialogOpen(false);
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -339,7 +308,7 @@ const AddListingForm = () => {
             onClick={() => { setListingType(type); setStep(type === 'service' ? 1 : 2); }}
           >
             <CardHeader>
-              <CardTitle className="capitalize">{type}</CardTitle>
+              <CardTitle className="capitalize text-lg lg:text-3xl">{type}</CardTitle>
             </CardHeader>
           </Card>
         ))}

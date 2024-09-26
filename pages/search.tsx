@@ -30,53 +30,40 @@ interface Listing {
 interface SearchPageProps {
   listings: Listing[];
   initialQuery: string;
-  initialLocation: string;
-  initialCategory: string;
-  initialStartDate: string;
-  initialEndDate: string;
-  initialGuests: number;
 }
 
-const SearchPage: React.FC<SearchPageProps> = ({ 
-  listings, 
-  initialQuery, 
-  initialLocation, 
-  initialCategory,
-  initialStartDate,
-  initialEndDate,
-  initialGuests
-}) => {
+const SearchPage: React.FC<SearchPageProps> = ({ listings, initialQuery }) => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [searchLocation, setSearchLocation] = useState(initialLocation);
-  const [activeCategory, setActiveCategory] = useState(initialCategory);
-  const [startDate, setStartDate] = useState(initialStartDate);
-  const [endDate, setEndDate] = useState(initialEndDate);
-  const [guests, setGuests] = useState(initialGuests);
-  const [filteredListings, setFilteredListings] = useState(listings);
+  const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
 
   useEffect(() => {
     filterListings();
-  }, [searchQuery, searchLocation, activeCategory, startDate, endDate, guests]);
+  }, [searchQuery]);
 
   const filterListings = () => {
-    const filtered = listings.filter(listing => {
-      const matchesCategory = listing.type === activeCategory.toLowerCase().slice(0, -1) || activeCategory === 'All';
-      const matchesQuery = listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           listing.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesLocation = listing.location.toLowerCase().includes(searchLocation.toLowerCase());
-      
-      let matchesDates = true;
-      if (activeCategory !== 'Services' && startDate && endDate) {
-        const listingDate = new Date(listing.eventDate || listing.checkInTime || '');
-        const searchStart = new Date(startDate);
-        const searchEnd = new Date(endDate);
-        matchesDates = listingDate >= searchStart && listingDate <= searchEnd;
-      }
+    let filtered: Listing[];
+    if (searchQuery.trim() === '') {
+      // If no query, show a mix of different listing types, up to 10 total
+      const typeMap = new Map<string, Listing[]>();
+      listings.forEach(listing => {
+        if (!typeMap.has(listing.type)) {
+          typeMap.set(listing.type, []);
+        }
+        typeMap.get(listing.type)!.push(listing);
+      });
 
-      return matchesCategory && matchesQuery && matchesLocation && matchesDates;
-    });
-
+      filtered = Array.from(typeMap.values())
+        .flatMap(typeListing => typeListing.slice(0, 3))
+        .slice(0, 10);
+    } else {
+      // Filter based on search query
+      filtered = listings.filter(listing =>
+        listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        listing.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        listing.location.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 10);
+    }
     setFilteredListings(filtered);
   };
 
@@ -84,14 +71,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
     e.preventDefault();
     router.push({
       pathname: '/search',
-      query: {
-        query: searchQuery,
-        location: searchLocation,
-        category: activeCategory,
-        startDate,
-        endDate,
-        guests
-      }
+      query: { query: searchQuery }
     }, undefined, { shallow: true });
   };
 
@@ -147,7 +127,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
         </h1>
 
         <form onSubmit={handleSearch} className="mb-8">
-          <div className="flex flex-wrap gap-4">
+          <div className="flex gap-4">
             <Input
               type="text"
               placeholder="What are you looking for?"
@@ -155,48 +135,6 @@ const SearchPage: React.FC<SearchPageProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-grow"
             />
-            <Input
-              type="text"
-              placeholder="Location"
-              value={searchLocation}
-              onChange={(e) => setSearchLocation(e.target.value)}
-              className="flex-grow"
-            />
-            <select
-              value={activeCategory}
-              onChange={(e) => setActiveCategory(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="All">All Categories</option>
-              <option value="Services">Services</option>
-              <option value="Stays">Stays</option>
-              <option value="Events">Events</option>
-              <option value="Experiences">Experiences</option>
-            </select>
-            {activeCategory !== 'Services' && (
-              <>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="flex-grow"
-                />
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="flex-grow"
-                />
-                <Input
-                  type="number"
-                  placeholder="Guests"
-                  value={guests}
-                  onChange={(e) => setGuests(Number(e.target.value))}
-                  className="flex-grow"
-                  min="1"
-                />
-              </>
-            )}
             <Button type="submit">
               <Search className="mr-2 h-4 w-4" /> Search
             </Button>
@@ -218,26 +156,16 @@ const SearchPage: React.FC<SearchPageProps> = ({
 };
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  const { query, location, category, startDate, endDate, guests } = context.query;
+  const { query } = context.query;
   const client = await clientPromise;
   const db = client.db();
 
-  let filter = {};
-  if (category && category !== 'All') {
-    filter = { type: category.toString().toLowerCase().slice(0, -1) };
-  }
-
-  const listings = await db.collection('listings').find(filter).toArray();
+  const listings = await db.collection('listings').find({}).toArray();
 
   return {
     props: {
       listings: JSON.parse(JSON.stringify(listings)),
       initialQuery: query || '',
-      initialLocation: location || '',
-      initialCategory: category || 'All',
-      initialStartDate: startDate || '',
-      initialEndDate: endDate || '',
-      initialGuests: Number(guests) || 1,
     },
   };
 };

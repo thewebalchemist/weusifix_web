@@ -65,8 +65,8 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="text-gray-800 dark:text-gray-300">
         <DialogHeader>
-          <DialogTitle>Authentication</DialogTitle>
-          <DialogDescription>Login or create a new account</DialogDescription>
+          <DialogTitle>Login or create a new account</DialogTitle>
+          <DialogDescription>Use real details so that clients can find you</DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="login">
           <TabsList className="grid w-full grid-cols-2">

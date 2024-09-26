@@ -35,8 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
         try {
+          const token = await firebaseUser.getIdToken();
           const response = await fetch(`/api/users/${firebaseUser.uid}`, {
             headers: {
               'Authorization': `Bearer ${token}`
@@ -62,31 +62,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function signup(email: string, password: string, role: string, phoneNumber: string, name: string) {
-    try {
-      const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(newUser, { displayName: name });
-      const token = await newUser.getIdToken();
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          uid: newUser.uid, 
-          email, 
-          role,
-          phoneNumber,
-          name
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create user in database');
-      }
-    } catch (error) {
-      console.error('Signup error:', error);
-      throw error;
+    const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(newUser, { displayName: name });
+    const token = await newUser.getIdToken();
+    const response = await fetch(`/api/users/${newUser.uid}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ 
+        email, 
+        role,
+        phoneNumber,
+        name
+      }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create user in database');
     }
+    const userData = await response.json();
+    setUser({ ...newUser, ...userData } as CustomUser);
   }
 
   async function login(email: string, password: string) {

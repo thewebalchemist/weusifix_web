@@ -1,7 +1,7 @@
 // pages/api/users/[uid].ts
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { auth } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebase-admin'; // Changed this line
 import { getCollection } from '@/lib/mongodb';
 
 async function verifyToken(req: NextApiRequest): Promise<string | null> {
@@ -12,7 +12,7 @@ async function verifyToken(req: NextApiRequest): Promise<string | null> {
 
   const token = authHeader.split('Bearer ')[1];
   try {
-    const decodedToken = await auth.verifyIdToken(token);
+    const decodedToken = await adminAuth.verifyIdToken(token); // Changed this line
     return decodedToken.uid;
   } catch (error) {
     console.error('Error verifying token:', error);
@@ -25,16 +25,29 @@ async function getUser(uid: string) {
   return usersCollection.findOne({ uid });
 }
 
-async function createUser(uid: string, email: string, role: string) {
+async function createOrUpdateUser(uid: string, userData: any) {
   const usersCollection = await getCollection('users');
-  const newUser = { 
-    uid, 
-    email, 
+  const { email, role, phoneNumber, name } = userData;
+  
+  const updateData = {
+    uid,
+    email,
     role,
-    createdAt: new Date()
+    phoneNumber,
+    name,
+    updatedAt: new Date()
   };
-  await usersCollection.insertOne(newUser);
-  return newUser;
+
+  const result = await usersCollection.findOneAndUpdate(
+    { uid },
+    { 
+      $set: updateData,
+      $setOnInsert: { createdAt: new Date(), hasListings: false }
+    },
+    { upsert: true, returnDocument: 'after' }
+  );
+
+  return result.value;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -69,15 +82,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     case 'POST':
       try {
-        const { email, role } = req.body;
+        const { email, role, phoneNumber, name } = req.body;
         if (!email || !role) {
           return res.status(400).json({ error: 'Email and role are required' });
         }
-        const newUser = await createUser(uid, email, role);
-        res.status(201).json(newUser);
+        const updatedUser = await createOrUpdateUser(uid, { email, role, phoneNumber, name });
+        res.status(200).json(updatedUser);
       } catch (error) {
-        console.error('Error creating user:', error);
-        res.status(500).json({ error: 'Failed to create user' });
+        console.error('Error creating/updating user:', error);
+        res.status(500).json({ error: 'Failed to create/update user' });
       }
       break;
 

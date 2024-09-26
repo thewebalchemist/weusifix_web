@@ -16,25 +16,27 @@ import Image from 'next/image';
 
 interface NavigationProps {
   setIsAuthDialogOpen: (isOpen: boolean) => void;
+  onAddListingClick: () => void;
 }
-const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen }) => {
+
+
+const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onAddListingClick }) => {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
 
   const linkClasses = (path: string) =>
-    `flex items-center py-2 px-3 rounded-full text-sm font-medium transition-colors ${
-      router.pathname === path
-        ? 'bg-primary text-white'
-        : 'bg-transparent text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
+    `flex items-center py-2 px-2 lg:px-3 rounded-full text-sm font-medium transition-colors ${router.pathname === path
+      ? 'bg-primary text-white'
+      : 'bg-transparent text-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
     }`;
 
   const renderLogo = () => {
     if (theme === 'dark') {
-      return <img src="/images/weusi-dark.png" alt="Weusifix Dark Logo" className="h-6 w-auto" />;
+      return <img src="/images/weusi-dark.png" alt="Weusifix Dark Logo" className="h-3.5 lg:h-6 w-auto" />;
     } else {
-      return <img src="/images/weusi-light.png" alt="Weusifix Light Logo" className="h-6 w-auto" />;
+      return <img src="/images/weusi-light.png" alt="Weusifix Light Logo" className="h-3.5 lg:h-6 w-auto" />;
     }
   };
 
@@ -97,24 +99,24 @@ const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen }) => {
   );
 
   return (
-    <nav className="my-5 mx-5 py-2 bg-gray-200 dark:bg-gray-700 rounded-full fixed inset-x-0 z-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
+    <nav className="lg:my-5 lg:mx-5 mx-2 my-2 py-2 bg-gray-200 dark:bg-gray-700 rounded-full fixed inset-x-0 z-10">
+      <div className="max-w-7xl mx-auto px-3 lg:px-8">
+        <div className="flex justify-between  lg:h-16 items-center">
           {/* Left: Logo */}
           <Link href="/" className="flex-shrink-0 flex items-center">
             {renderLogo()}
           </Link>
 
           {/* Center: Categories (hidden on mobile) */}
-          <div className="hidden md:flex my-2 space-x-4 bg-gray-400/50 backdrop-blur-md px-5 py-2 rounded-full">
+          <div className="hidden md:flex my-2 space-x-4 bg-gray-400/50 backdrop-blur-md px-5 py-2 rounded-xl lg:rounded-full">
             {renderLinks()}
           </div>
 
           {/* Right: Add Listing Button, Theme Toggle, and Profile */}
           <div className="flex items-center space-x-4">
-            <Button 
-              className="hidden md:inline-flex text-white bg-primary hover:text-gray-200 border-primary hover:bg-primary/70 px-5 py-3" 
-              onClick={() => router.push('/add-listing')} 
+            <Button
+              className="hidden md:inline-flex text-white bg-primary hover:text-gray-200 border-primary hover:bg-primary/70 px-5 py-3"
+              onClick={() => router.push('/add-listing')}
               variant="outline"
             >
               Add Listing
@@ -130,7 +132,7 @@ const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen }) => {
               )}
             </button>
             {user ? (
-        renderProfileMenu()
+              renderProfileMenu()
             ) : (
               <Button
                 onClick={() => setIsAuthDialogOpen(true)}
@@ -141,34 +143,44 @@ const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen }) => {
               </Button>
             )}
             {/* Mobile menu button */}
-            <button
-              className="md:hidden p-2 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-[1.2rem] w-[1.2rem]" />
+                    <span className="sr-only">Toggle menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem asChild>
+                    <Link href="/services" className={linkClasses('/services')}>
+                      Services
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/events" className={linkClasses('/events')}>
+                      Events
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/stays" className={linkClasses('/stays')}>
+                      Stays
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/experiences" className={linkClasses('/experiences')}>
+                      Experiences
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={onAddListingClick}>
+                    Add Listing
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {renderLinks()}
-            <Button 
-              className="w-full mt-3 bg-primary hover:text-white border-primary hover:bg-primary/70 px-5 py-3" 
-              onClick={() => {
-                router.push('/add-listing');
-                setMobileMenuOpen(false);
-              }} 
-              variant="outline"
-            >
-              Add Listing
-            </Button>
-          </div>
-        </div>
-      )}
     </nav>
   );
 };
