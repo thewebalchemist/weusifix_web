@@ -10,12 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
-import { storage } from '../lib/firebase';
+import { auth, storage } from '../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Checkbox } from '@/components/ui/checkbox';
 import AuthDialog from '@/components/AuthDialog';
 import { useDropzone } from 'react-dropzone';
 import { fetchUserDetails, UserData } from '../lib/userUtils';
+import { withAuth } from '@/contexts/withAuth';
+
 
 // Dynamically import the Map component
 const DynamicMap = dynamic(() => import('@/components/MapComponent'), {
@@ -60,6 +62,7 @@ const AddListingForm = () => {
   const { user, loading } = useFirebaseAuth();
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(0);
   const [listingType, setListingType] = useState('');
   const [isIndividual, setIsIndividual] = useState(true);
@@ -83,9 +86,10 @@ const AddListingForm = () => {
     },
     bookingEnabled: false,
     userDetails: {
+      uid: '',
       name: '',
       profilePic: null,
-      phone: '',
+      phoneNumber: '',
       email: '',
       bio: '',
       socialMedia: {
@@ -95,7 +99,7 @@ const AddListingForm = () => {
         instagram: '',
         youtube: ''
       }
-    } as UserData,
+    },
     serviceCategory: '',
     eventDate: null,
     eventTime: null,
@@ -121,50 +125,52 @@ const AddListingForm = () => {
   });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      setIsLoading(true);
-
-      if (loading) return;
-
+    const fetchData = async () => {
+      const user = auth.currentUser;
       if (!user) {
         console.log('User is not authenticated');
         setIsAuthDialogOpen(true);
         setIsLoading(false);
-        return;
-      }
-
-      console.log('User is authenticated:', user);
-      try {
-        const userData = await fetchUserDetails(user);
-        if (userData) {
-          setFormData(prevData => ({
-            ...prevData,
-            userDetails: {
-              ...prevData.userDetails,
-              ...userData
-            }
-          }));
-          setIsFirstTimeListing(!userData.hasListings);
+      } else {
+        console.log('User is authenticated:', user);
+        try {
+          const userData = await fetchUserDetails(user);
+          if (userData) {
+            setFormData(prevData => ({
+              ...prevData,
+              userDetails: {
+                uid: userData.uid,
+                name: userData.name,
+                email: userData.email,
+                phoneNumber: userData.phoneNumber,
+                profilePic: userData.profilePic,
+                bio: userData.bio,
+                socialMedia: userData.socialMedia
+              }
+            }));
+          } else {
+            throw new Error('Failed to fetch user details');
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          toast.error('Failed to load user data. Please try again.');
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching user details:', error);
-        toast.error('Failed to fetch user details. Please try again.');
-      } finally {
-        setIsLoading(false);
       }
     };
 
-    checkAuth();
-  }, [user, loading, router]);
+    fetchData();
+  }, []);
 
   const handleAuthDialogClose = () => {
     setIsAuthDialogOpen(false);
-    if (!user) {
-      // If the user is still not authenticated after closing the dialog, redirect them
-      router.push('/dashboard');
+    if (!auth.currentUser) {
+      router.push('/');
     }
   };
 
+  
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevData => ({ ...prevData, [name]: value }));
@@ -203,14 +209,19 @@ const AddListingForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!auth.currentUser) {
+      toast.error('You must be logged in to create a listing');
+      return;
+    }
+    setIsSubmitting(true);
     try {
-      const token = await user.getIdToken();
+      const token = await auth.currentUser.getIdToken();
       
       // Upload new images
       const uploadedUrls = await Promise.all(
         formData.images.map(async (image) => {
           if (typeof image === 'string') return image; // Already uploaded
-          const storageRef = ref(storage, `listings/${user.uid}/${image.name}`);
+          const storageRef = ref(storage, `listings/${auth.currentUser.uid}/${image.name}`);
           await uploadBytes(storageRef, image);
           return getDownloadURL(storageRef);
         })
@@ -269,12 +280,15 @@ const AddListingForm = () => {
     } catch (error) {
       console.error('Error adding listing:', error);
       toast.error('An error occurred while adding the listing. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
     return <div className="py-32 text-center mx-auto animate-pulse">Loading...</div>;
   }
+
 
   const handleNextStep = () => {
     if (step < steps.length - 1) {
@@ -720,7 +734,7 @@ const AddListingForm = () => {
           <Input
             name="phone"
             placeholder="Phone/WhatsApp Number"
-            value={formData.userDetails.phone}
+            value={formData.userDetails.phoneNumber}
             onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, phone: e.target.value } }))}
             required={isFirstTimeListing}
           />
@@ -1116,7 +1130,13 @@ const AddListingForm = () => {
                 {step < steps.length - 1 ? (
                   <Button type="button" onClick={handleNextStep}>Next</Button>
                 ) : (
-                  <Button type="button" onClick={handleSubmit}>Submit Listing</Button>
+                  <Button 
+                    type="button" 
+                    onClick={handleSubmit} 
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit Listing'}
+                  </Button>
                 )}
               </div>
             </div>
@@ -1127,4 +1147,4 @@ const AddListingForm = () => {
   );
 };
 
-export default AddListingForm;
+export default withAuth(AddListingForm);

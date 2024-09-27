@@ -14,7 +14,7 @@ interface AuthDialogProps {
 }
 
 const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
-  const { signup, login, signInWithGoogle } = useAuth();
+  const { signup, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,10 +24,21 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [nameError, setNameError] = useState('');
 
   const validateEmail = (email: string) => {
-    const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return re.test(String(email).toLowerCase());
+  };
+
+  const validatePassword = (password: string) => {
+    const re = /^(?=.*\d)(?=.*[a-zA-Z]).{6,}$/;
+    return re.test(password);
+  };
+
+  const validateName = (name: string) => {
+    return name.trim().length >= 2;
   };
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,6 +51,26 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    if (!validatePassword(newPassword)) {
+      setPasswordError('Password must be at least 6 characters long and contain at least one number');
+    } else {
+      setPasswordError('');
+    }
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setName(newName);
+    if (!validateName(newName)) {
+      setNameError('Name must be at least 2 characters long');
+    } else {
+      setNameError('');
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateEmail(email)) {
@@ -49,7 +80,6 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
     setIsLoading(true);
     try {
       await login(email, password);
-      toast.success('Logged in successfully!');
       onClose();
     } catch (error) {
       toast.error('Failed to log in. Please check your credentials.');
@@ -60,8 +90,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateEmail(email)) {
-      setEmailError('Please enter a valid email address');
+    if (!validateEmail(email) || !validatePassword(password) || !validateName(name)) {
       return;
     }
     if (password !== confirmPassword) {
@@ -70,8 +99,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
     }
     setIsLoading(true);
     try {
-      await signup(email, password, phoneNumber, name);
-      toast.success('Account created successfully!');
+      await signup(email, password, name, phoneNumber);
       onClose();
     } catch (error) {
       toast.error('Error creating account. Please try again.');
@@ -80,15 +108,14 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-      toast.success('Signed in with Google successfully!');
-      onClose();
-    } catch (error) {
-      toast.error('Failed to sign in with Google. Please try again.');
-    }
-  };
+  // const handleGoogleSignIn = async () => {
+  //   try {
+  //     await signInWithGoogle();
+  //     onClose();
+  //   } catch (error) {
+  //     toast.error('Failed to sign in with Google. Please try again.');
+  //   }
+  // };
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
@@ -124,7 +151,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   id="loginPassword"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
                   required
                 />
                 <button
@@ -134,16 +161,17 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
+                {passwordError && <p className="text-red-500 text-sm mt-1">{passwordError}</p>}
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Logging in...' : 'Log In'}
               </Button>
             </form>
-            <div className="mt-4">
+            {/* <div className="mt-4">
               <Button onClick={handleGoogleSignIn} className="w-full" variant="outline">
                 Sign in with Google
               </Button>
-            </div>
+            </div> */}
           </TabsContent>
           <TabsContent value="signup">
             <form onSubmit={handleSignup} className="space-y-4">
@@ -153,11 +181,11 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   id="signupName"
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={handleNameChange}
                   required
                 />
+                {nameError && <p className="text-red-500 text-sm mt-1">{nameError}</p>}
               </div>
-
               <div>
                 <Label htmlFor="phoneNumber">Phone Number</Label>
                 <Input
@@ -165,7 +193,6 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  required
                 />
               </div>
               <div>
@@ -185,7 +212,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   id="signupPassword"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
                   required
                 />
                 <button
@@ -195,6 +222,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
+                {passwordError && <p className="text-red-500 text-sm mt-1">{passwordError}</p>}
               </div>
               <div className="relative">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
@@ -213,15 +241,16 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Signing up...' : 'Sign Up'}
               </Button>
             </form>
-            <div className="mt-4">
+            {/* <div className="mt-4">
               <Button onClick={handleGoogleSignIn} className="w-full" variant="outline">
                 Sign up with Google
               </Button>
-            </div>
+            </div> */}
           </TabsContent>
         </Tabs>
       </DialogContent>

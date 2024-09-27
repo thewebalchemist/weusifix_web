@@ -99,7 +99,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ listings, initialQuery }) => {
           </div>
           <div className="p-4">
             <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
-              {listing.type.charAt(0).toUpperCase() + listing.type.slice(1)}
+            {listing.type 
+              ? listing.type.charAt(0).toUpperCase() + listing.type.slice(1)
+              : 'Unknown Type'}
             </span>
             <h2 className='mt-2 text-lg font-semibold text-gray-800 dark:text-white'>{listing.title}</h2>
             <p className='text-sm text-gray-500 dark:text-gray-400'>{getLocationString(listing.location)}</p>

@@ -6,63 +6,48 @@ import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import AuthDialog from '../components/AuthDialog';
 import toast from 'react-hot-toast';
-import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
+import { fetchUserDetails, fetchUserDetailsAndListings, UserData, Lsitin } from '../lib/userUtils';
 import { auth } from '../lib/firebase';
+import { withAuth } from '@/contexts/withAuth';
 
 const UserDashboard = () => {
-  const { user, loading } = useFirebaseAuth();
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
-  const [listings, setListings] = useState([]);
-  const [userDetails, setUserDetails] = useState(null);
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [userDetails, setUserDetails] = useState<UserData | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      setIsLoading(true);
-
-      if (loading) return;
-
+    const fetchData = async () => {
+      const user = auth.currentUser;
       if (!user) {
         console.log('User is not authenticated');
-        router.push('/login');
-        return;
-      }
-
-      console.log('User is authenticated:', user);
-      try {
-        await fetchUserDetails();
-        await fetchListings();
+        setIsAuthDialogOpen(true);
         setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        toast.error('Failed to load user data. Please try again.');
-        setIsLoading(false);
+      } else {
+        console.log('User is authenticated:', user);
+        try {
+          const { userDetails, listings } = await fetchUserDetailsAndListings(user);
+          if (userDetails) {
+            setUserDetails(userDetails);
+            setListings(listings);
+          } else {
+            throw new Error('Failed to fetch user details');
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          toast.error('Failed to load user data. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
 
-    checkAuth();
-  }, [user, loading, router]);
+    fetchData();
+  }, []);
 
-  const fetchUserDetails = async () => {
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch(`/api/users/${user.uid}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const userData = await response.json();
-        setUserDetails(userData);
-      }
-    } catch (error) {
-      console.error('Error fetching user details:', error);
-    }
-  };
-
-  const fetchListings = async () => {
+  const fetchListings = async (user) => {
     try {
       const token = await user.getIdToken();
       const response = await fetch('/api/listings', {
@@ -72,15 +57,20 @@ const UserDashboard = () => {
       });
       if (response.ok) {
         const listingsData = await response.json();
-        // Sort listings by creation date (newest first)
         setListings(listingsData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      } else {
+        throw new Error('Failed to fetch listings');
       }
     } catch (error) {
       console.error('Error fetching listings:', error);
+      toast.error('Failed to load listings. Please try again.');
     }
   };
 
   const handleDeleteListing = async (listingId) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
     if (window.confirm('Are you sure you want to delete this listing?')) {
       try {
         const token = await user.getIdToken();
@@ -92,9 +82,9 @@ const UserDashboard = () => {
         });
         if (response.ok) {
           toast.success('Listing deleted successfully');
-          fetchListings(); // Refresh the listings
+          fetchListings(user); // Refresh the listings
         } else {
-          toast.error('Failed to delete listing');
+          throw new Error('Failed to delete listing');
         }
       } catch (error) {
         console.error('Error deleting listing:', error);
@@ -105,6 +95,9 @@ const UserDashboard = () => {
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
+    const user = auth.currentUser;
+    if (!user || !userDetails) return;
+
     try {
       const token = await user.getIdToken();
       const response = await fetch(`/api/users/${user.uid}`, {
@@ -119,7 +112,7 @@ const UserDashboard = () => {
       if (response.ok) {
         toast.success('Profile updated successfully!');
       } else {
-        toast.error('Failed to update profile');
+        throw new Error('Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -128,6 +121,9 @@ const UserDashboard = () => {
   };
 
   const handlePasswordChange = async (currentPassword, newPassword) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
     try {
       const credential = auth.EmailAuthProvider.credential(user.email, currentPassword);
       await user.reauthenticateWithCredential(credential);
@@ -135,7 +131,14 @@ const UserDashboard = () => {
       toast.success('Password updated successfully!');
     } catch (error) {
       console.error('Error updating password:', error);
-      toast.error('Failed to update password');
+      toast.error('Failed to update password. Please check your current password and try again.');
+    }
+  };
+
+  const handleAuthDialogClose = () => {
+    setIsAuthDialogOpen(false);
+    if (!auth.currentUser) {
+      router.push('/');
     }
   };
 
@@ -365,4 +368,4 @@ const UserDashboard = () => {
   );
 };
 
-export default UserDashboard;
+export default withAuth(UserDashboard);

@@ -44,23 +44,23 @@ const subCategories = {
   Services: {
     title: 'Featured Services',
     subtitle: 'Easiest way to get reliable service professionals.',
-    items: ['Movers', 'Cleaning', 'Welding', 'Tailoring', 'Electricians', 'MCs', 'Others'],
+    items: ['All', 'Movers', 'Cleaning', 'Welding', 'Tailoring', 'Electricians', 'MCs', 'Others'],
   },
   Events: {
     title: 'Featured Events',
     subtitle: 'Join exciting events and create unforgettable memories.',
-    items: ['Conferences', 'Concerts', 'Workshops', 'Parties'],
+    items: ['All','Conferences', 'Concerts', 'Workshops', 'Parties'],
   },
 
   Stays: {
     title: 'Featured Stays',
     subtitle: 'Find your perfect home away from home, wherever your travels take you.',
-    items: ['Hotels', 'Apartments', 'Resorts', 'Villas'],
+    items: ['All', 'Hotels', 'Apartments', 'Resorts', 'Villas'],
   },
   Experiences: {
     title: 'Featured Experiences',
     subtitle: 'Explore unique activities and immerse yourself in new adventures.',
-    items: ['City Tours', 'Adventures', 'Culinary Experiences', 'Wellness'],
+    items: ['All', 'City Tours', 'Adventures', 'Culinary Experiences', 'Wellness'],
   },
 };
 
@@ -252,7 +252,7 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
                   <MapPin className="w-4 h-4 mr-1" />
                   <span>{listing.address}</span>
                 </div>
-                <p className='text-sm text-gray-500 dark:text-gray-400 mb-4'>{listing.description.substring(0, 100)}...</p>
+                <p className='text-sm text-gray-500 dark:text-gray-400 mb-4'>{listing.description.substring(0, 80)}...</p>
                 <div className="">
                   <div className='flex justify-between space-x-4'>
                     <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart /></span>
@@ -463,7 +463,7 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
               </div>
             </div>
   
-            <div className="block lg:flex items-center mt-0 lg:mt-10">
+            <div className="block lg:flex items-start mt-0 lg:mt-10">
               <div className="hidden lg:block lg:w-1/4 pr-10 ">
                 <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
                   {subCategories[activeTab as keyof typeof subCategories].title}
@@ -563,12 +563,16 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
       </div>
     );
   };
+
   
   export const getServerSideProps: GetServerSideProps = async () => {
     const client = await clientPromise;
     const db = client.db();
   
-    const listings = await db.collection('listings').find({}).toArray();
+    const listings = await db.collection('listings')
+      .find({})
+      .sort({ createdAt: -1 }) // Sort by createdAt in descending order
+      .toArray();
   
     return {
       props: {

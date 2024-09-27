@@ -6,21 +6,16 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  updateProfile,
-  GoogleAuthProvider,
-  signInWithPopup
+  updateProfile
 } from 'firebase/auth';
-
-interface CustomUser extends Omit<FirebaseUser, 'phoneNumber'> {
-  phoneNumber?: string;
-}
+import { toast } from 'react-hot-toast';
+import axios from 'axios';
 
 interface AuthContextType {
-  user: CustomUser | null;
+  user: FirebaseUser | null;
   loading: boolean;
-  signup: (email: string, password: string, phoneNumber: string, name: string) => Promise<void>;
+  signup: (email: string, password: string, name: string, phoneNumber: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -31,7 +26,7 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<CustomUser | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,85 +34,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         try {
           const token = await firebaseUser.getIdToken();
-          const response = await fetch(`/api/users/${firebaseUser.uid}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+          await axios.post(`/api/users/${firebaseUser.uid}`, {
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            phoneNumber: firebaseUser.phoneNumber
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
           });
-          if (response.ok) {
-            const userData = await response.json();
-            setUser({ ...firebaseUser, phoneNumber: userData.phoneNumber } as CustomUser);
-          } else {
-            setUser(firebaseUser as CustomUser);
-          }
         } catch (error) {
-          console.error('Error fetching user data:', error);
-          setUser(firebaseUser as CustomUser);
+          console.error('Error updating user in MongoDB:', error);
         }
-      } else {
-        setUser(null);
       }
+      setUser(firebaseUser);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  async function signup(email: string, password: string, phoneNumber: string, name: string) {
-    const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(newUser, { displayName: name });
-    const token = await newUser.getIdToken();
-    const response = await fetch(`/api/users/${newUser.uid}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ 
-        email, 
-        phoneNumber,
-        name
-      }),
-    });
-    if (!response.ok) {
-      throw new Error('Failed to create user in database');
-    }
-    const userData = await response.json();
-    setUser({ ...newUser, ...userData } as CustomUser);
-  }
-
-  async function login(email: string, password: string) {
+  async function signup(email: string, password: string, name: string, phoneNumber: string) {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(newUser, { displayName: name });
+      const token = await newUser.getIdToken();
+      await axios.post(`/api/users/${newUser.uid}`, {
+        email,
+        name,
+        phoneNumber
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUser(newUser);
+      toast.success('Account created successfully!');
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Signup error:', error);
+      toast.error(`Error creating account: ${error.message}`);
       throw error;
     }
   }
 
-  async function signInWithGoogle() {
-    const provider = new GoogleAuthProvider();
+  async function login(email: string, password: string) {
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      const token = await user.getIdToken();
-      const response = await fetch(`/api/users/${user.uid}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          email: user.email, 
-          name: user.displayName,
-          phoneNumber: user.phoneNumber
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create/update user in database');
-      }
+      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
+      setUser(firebaseUser);
+      toast.success('Logged in successfully!');
     } catch (error) {
-      console.error('Google sign-in error:', error);
+      console.error('Login error:', error);
+      toast.error('Failed to log in. Please check your credentials.');
       throw error;
     }
   }
@@ -125,8 +88,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function logout() {
     try {
       await signOut(auth);
+      setUser(null);
+      toast.success('Logged out successfully!');
     } catch (error) {
       console.error('Logout error:', error);
+      toast.error('Failed to log out. Please try again.');
       throw error;
     }
   }
@@ -136,7 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signup,
     login,
-    signInWithGoogle,
     logout
   };
 

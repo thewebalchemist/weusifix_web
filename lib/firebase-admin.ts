@@ -13,4 +13,5 @@ if (!getApps().length) {
 
 const adminAuth = getAuth();
 
+
 export { adminAuth };
