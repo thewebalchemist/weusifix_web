@@ -17,6 +17,7 @@ import {
   WhatsappIcon
 } from 'react-share';
 import { Label } from './ui/label';
+import ShareDialog from './ShareDialog';
 
 const StarRating = ({ rating }) => {
   return (
@@ -125,9 +126,8 @@ const ServiceListing = ({ service }) => {
             <Card className="mb-6">
             <CardContent className='pt-6'>
             <div className="flex space-x-2">
-                  <Button variant="outline" className="flex-1">
-                    <Share className="mr-2 h-4 w-4" /> Share
-                  </Button>
+            <ShareDialog url={`https://weusifix.com/services/${service.slug}`} title={service.title} />
+
                   <Button variant="outline" className="flex-1">
                     <Heart className="mr-2 h-4 w-4" /> Favorite
                   </Button>
@@ -247,9 +247,7 @@ const EventListing = ({ event }) => {
             <Card className="mb-6">
               <CardContent className='p-6'>
                 <div className="flex space-x-2">
-                  <Button variant="outline" className="flex-1">
-                    <Share className="mr-2 h-4 w-4" /> Share
-                  </Button>
+                  <ShareDialog url={`https://weusifix.com/services/${event.slug}`} title={event.title} />
                   <Button variant="outline" className="flex-1">
                     <Heart className="mr-2 h-4 w-4" /> Favorite
                   </Button>
@@ -403,9 +401,7 @@ const StayListing = ({ stay }) => {
             <Card className="mb-6">
               <CardContent className='p-6'>
                 <div className="flex space-x-2">
-                  <Button variant="outline" className="flex-1">
-                    <Share className="mr-2 h-4 w-4" /> Share
-                  </Button>
+                  <ShareDialog url={`https://weusifix.com/services/${stay.slug}`} title={stay.title} />
                   <Button variant="outline" className="flex-1">
                     <Heart className="mr-2 h-4 w-4" /> Favorite
                   </Button>
@@ -563,9 +559,7 @@ const ExperienceListing = ({ experience }) => {
             <Card className="mb-6">
               <CardContent className='p-6'>
                 <div className="flex space-x-2">
-                  <Button variant="outline" className="flex-1">
-                    <Share className="mr-2 h-4 w-4" /> Share
-                  </Button>
+                  <ShareDialog url={`https://weusifix.com/services/${experience.slug}`} title={experience.title} />
                   <Button variant="outline" className="flex-1">
                     <Heart className="mr-2 h-4 w-4" /> Favorite
                   </Button>
