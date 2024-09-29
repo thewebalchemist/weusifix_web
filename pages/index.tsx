@@ -9,9 +9,11 @@ import clientPromise from '@/lib/mongodb';
 import Link from 'next/link';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import HomepageSections from '@/components/HomepageSections';
+import { supabase } from '@/lib/supabase';
 
 interface Listing {
   _id: string;
+  listing_type: 'service' | 'event' | 'stay' | 'experience';
   type: 'service' | 'event' | 'stay' | 'experience';
   listingType: 'service' | 'event' | 'stay' | 'experience';
   title: string;
@@ -38,7 +40,7 @@ interface HomePageProps {
   listings: Listing[];
 }
 
-const categories = ['All', 'Services', 'Events', 'Stays',  'Experiences'];
+const categories = ['All', 'Services', 'Events', 'Stays', 'Experiences'];
 
 const subCategories = {
   Services: {
@@ -49,7 +51,7 @@ const subCategories = {
   Events: {
     title: 'Featured Events',
     subtitle: 'Join exciting events and create unforgettable memories.',
-    items: ['All','Conferences', 'Concerts', 'Workshops', 'Parties'],
+    items: ['All', 'Conferences', 'Concerts', 'Workshops', 'Parties'],
   },
 
   Stays: {
@@ -64,7 +66,7 @@ const subCategories = {
   },
 };
 
-const HomePage: React.FC<HomePageProps> = ({ listings }) => {
+const HomePage: React.FC = () => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('Services');
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,33 +77,43 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
   const [activeSubcategory, setActiveSubcategory] = useState(subCategories[activeTab as keyof typeof subCategories].items[0]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [timeLeft, setTimeLeft] = useState('');
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const ITEMS_PER_PAGE = 9;
 
   useEffect(() => {
-    const calculateTimeLeft = () => {
-      const nearestEvent = listings.find(listing => listing.type === 'event' && listing.date);
-      if (nearestEvent && nearestEvent.date) {
-        const difference = new Date(nearestEvent.date).getTime() - new Date().getTime();
-        if (difference > 0) {
-          const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-          const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-          const minutes = Math.floor((difference / 1000 / 60) % 60);
-          const seconds = Math.floor((difference / 1000) % 60);
-          return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-        }
-      }
-      return 'No upcoming events';
-    };
+    fetchListings();
+  }, [activeTab, page]);
 
-    const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [listings]);
-  const filteredListings = listings.filter(listing => {
-    if (activeTab === 'All') return true;
-    const listingType = listing.type || listing.listingType;
-    return listingType.toLowerCase() === activeTab.toLowerCase().slice(0, -1);
-  });
+  const fetchListings = async () => {
+    try {
+      let query = supabase
+        .from('listings')
+        .select('*')
+        .order('created_at', { ascending: true })
+        .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
+
+      if (activeTab !== 'All') {
+        query = query.eq('listing_type', activeTab.toLowerCase().slice(0, -1));
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (data) {
+        setListings(prevListings => [...prevListings, ...data]);
+        setHasMore(data.length === ITEMS_PER_PAGE);
+      }
+    } catch (error) {
+      console.error('Error fetching listings:', error);
+    }
+  };
+
+  const handleShowMore = () => {
+    setPage(prevPage => prevPage + 1);
+  };
 
 
   const handleSearch = (e: React.FormEvent) => {
@@ -219,12 +231,10 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
       event: 'events',
       experience: 'experiences'
     };
-  
-    const listingType = listing.type || listing.listingType;
-    const listingUrl = `/${listingTypeToPlural[listingType]}/${listing.slug}`;
 
+    const listingUrl = `/${listingTypeToPlural[listing.listing_type]}/${listing.slug}`;
 
-    switch (listing.type) {
+    switch (listing.listing_type) {
       case 'service':
         return (
           <Link href={listingUrl} key={listing._id}>
@@ -365,9 +375,9 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
             </div>
           </Link>
         );
-        case 'experience':
-          return (
-            <Link href={listingUrl} key={listing._id}>
+      case 'experience':
+        return (
+          <Link href={listingUrl} key={listing._id}>
             <div key={listing._id} className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" >
               <div className="absolute inset-0">
                 <img
@@ -393,197 +403,169 @@ const HomePage: React.FC<HomePageProps> = ({ listings }) => {
               </div>
             </div>
           </Link>
-          );
-        default:
-          return null;
-      }
-    };
-  
-    return (
-      <div className="bg-gray-100 dark:bg-gray-900">
-        <main>
-          <div className="max-w-6xl mx-auto py-20 lg:py-36 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-              <h1 className="text-center text-5xl lg:text-8xl font-semibold text-gray-900 dark:text-white">
-                Whatever you <span className='text-primary italic underline'>need</span> is here!
-              </h1>
-              {/* Tabs Section */}
-              <div className="flex justify-center pt-10">
-                <div className="flex px-2 lg:px-4 py-4 justify-center space-x-2 lg:space-x-4 backdrop-blur-md bg-gray-200 dark:bg-gray-700 rounded-full">
-                  {['Services', 'Events', 'Stays', 'Experiences'].map((tab) => (
-                    <button
-                      key={tab}
-                      className={`px-2 lg:px-3 py-2 font-medium text-xs lg:text-lg rounded-full ${activeTab === tab
-                        ? 'bg-primary text-white'
-                        : ' text-gray-800 dark:text-gray-100'
-                        }`}
-                      onClick={() => setActiveTab(tab)}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </div>
-  
-              {/* Search Form Section */}
-              <div className="py-4 lg:py-10">
-                <div className="rounded-xl lg:rounded-full backdrop-blur-md bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
-                  <div className="px-4 py-5 sm:p-6">
-                    <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
-                      {renderSearchForm()}
-                      <Button type="submit" className="w-full sm:w-auto">
-                        <Search className="mr-2 h-4 w-4" /> Search
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-  
-            <div className="justify-center pt-5 lg:pt-10">
-              <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                <h2 className="text-center text-5xl lg:text-7xl font-semibold text-gray-900 dark:text-white">
-                  The <span className='text-primary underline'>#1</span> site you can trust
-                </h2>
-              </div>
-  
-              <div className='flex justify-center py-5'>
-                <div className="flex px-2 lg:px-4 py-4 justify-center space-x-2 lg:space-x-4 backdrop-blur-md bg-gray-200 dark:bg-gray-700 rounded-full">
-                  {Object.keys(subCategories).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={`${activeTab === tab ? 'text-white bg-primary' : 'text-gray-700 dark:text-gray-300'
-                        } px-2 text-xs lg:text-lg lg:px-6 py-2 rounded-full`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-  
-            <div className="block lg:flex items-start mt-0 lg:mt-10">
-              <div className="hidden lg:block lg:w-1/4 pr-10 ">
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                  {subCategories[activeTab as keyof typeof subCategories].title}
-                </h3>
-                <p className="text-lg text-gray-500 dark:text-gray-300 mt-2">
-                  {subCategories[activeTab as keyof typeof subCategories].subtitle}
-                </p>
-                <ul className="mt-4 space-y-4">
-                  {subCategories[activeTab as keyof typeof subCategories].items.map((subcat) => (
-                    <li key={subcat}>
-                      <button
-                        onClick={() => setActiveSubcategory(subcat)}
-                        className={`w-full flex justify-between text-left px-4 py-2 rounded-full ${activeSubcategory === subcat
-                          ? 'bg-primary text-white'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                          }`}
-                      >
-                        {subcat}
-                        <ChevronRight />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="lg:hidden my-6">
-      <Carousel className='overflow-hidden'>
-        <CarouselContent>
-          {subCategories[activeTab as keyof typeof subCategories].items.map((subcat) => (
-            <CarouselItem key={subcat} className="basis-auto">
-              <Button
-                onClick={() => setActiveSubcategory(subcat)}
-                variant={activeSubcategory === subcat ? "default" : "outline"}
-                className="whitespace-nowrap"
-              >
-                {subcat}
-              </Button>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <CarouselPrevious />
-        <CarouselNext />
-      </Carousel>
-    </div>
-              <div className="p-5 lg:p-0 lg:w-3/4 items-center grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {filteredListings.map((listing) => renderCard(listing))}
-              </div>
-            </div>
-  
-            {/* Popular Listings Section */}
-            {/* <section className="mt-16">
-              <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Popular Listings</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {listings
-                  .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
-                  .slice(0, 12)
-                  .map((listing) => renderCard(listing))}
-              </div>
-            </section> */}
-  
-            {/* Benefits Section */}
-            <section className="p-2 lg:p-10 mt-10">
-              <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Why List With Us?</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Reach More Customers</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Get exposed to a wide audience actively looking for services, events, stays, and experiences.</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Easy Management</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Manage your listings, bookings, and customer interactions all in one place.</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Grow Your Business</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Increase your visibility and revenue with our powerful platform and marketing tools.</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
-  
-            {/* Partners Section */}
-            <section className="flex-grow">
-            <HomepageSections />
-            </section>
-          </div>
-        </main>
-      </div>
-    );
+        );
+      default:
+        return null;
+    }
   };
 
-  
-  export const getServerSideProps: GetServerSideProps = async () => {
-    const client = await clientPromise;
-    const db = client.db();
-  
-    const listings = await db.collection('listings')
-      .find({})
-      .sort({ createdAt: -1 }) // Sort by createdAt in descending order
-      .toArray();
-  
-    return {
-      props: {
-        listings: JSON.parse(JSON.stringify(listings.map(listing => ({
-          ...listing,
-          _id: listing._id.toString(),
-          type: listing.type || listing.listingType, // Ensure type is always set
-          listingType: listing.listingType || listing.type, // Ensure listingType is always set
-        })))),
-      },
-    };
-  };
-  
-  export default HomePage;
+  return (
+    <div className="bg-gray-100 dark:bg-gray-900">
+      <main>
+        <div className="max-w-6xl mx-auto py-20 lg:py-36 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-center text-5xl lg:text-8xl font-semibold text-gray-900 dark:text-white">
+              Whatever you <span className='text-primary italic underline'>need</span> is here!
+            </h1>
+            {/* Tabs Section */}
+            <div className="flex justify-center pt-10">
+              <div className="flex px-2 lg:px-4 py-4 justify-center space-x-2 lg:space-x-4 backdrop-blur-md bg-gray-200 dark:bg-gray-700 rounded-full">
+                {['Services', 'Events', 'Stays', 'Experiences'].map((tab) => (
+                  <button
+                    key={tab}
+                    className={`px-2 lg:px-3 py-2 font-medium text-xs lg:text-lg rounded-full ${activeTab === tab
+                      ? 'bg-primary text-white'
+                      : ' text-gray-800 dark:text-gray-100'
+                      }`}
+                    onClick={() => setActiveTab(tab)}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search Form Section */}
+            <div className="py-4 lg:py-10">
+              <div className="rounded-xl lg:rounded-full backdrop-blur-md bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
+                <div className="px-4 py-5 sm:p-6">
+                  <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
+                    {renderSearchForm()}
+                    <Button type="submit" className="w-full sm:w-auto">
+                      <Search className="mr-2 h-4 w-4" /> Search
+                    </Button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="justify-center pt-5 lg:pt-10">
+            <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+              <h2 className="text-center text-5xl lg:text-7xl font-semibold text-gray-900 dark:text-white">
+                The <span className='text-primary underline'>#1</span> site you can trust
+              </h2>
+            </div>
+
+            <div className='flex justify-center py-5'>
+              <div className="flex px-2 lg:px-4 py-4 justify-center space-x-2 lg:space-x-4 backdrop-blur-md bg-gray-200 dark:bg-gray-700 rounded-full">
+                {Object.keys(subCategories).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`${activeTab === tab ? 'text-white bg-primary' : 'text-gray-700 dark:text-gray-300'
+                      } px-2 text-xs lg:text-lg lg:px-6 py-2 rounded-full`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="block lg:flex items-start mt-0 lg:mt-10">
+            <div className="hidden lg:block lg:w-1/4 pr-10 ">
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                {subCategories[activeTab as keyof typeof subCategories].title}
+              </h3>
+              <p className="text-lg text-gray-500 dark:text-gray-300 mt-2">
+                {subCategories[activeTab as keyof typeof subCategories].subtitle}
+              </p>
+              <ul className="mt-4 space-y-4">
+                {subCategories[activeTab as keyof typeof subCategories].items.map((subcat) => (
+                  <li key={subcat}>
+                    <button
+                      onClick={() => setActiveSubcategory(subcat)}
+                      className={`w-full flex justify-between text-left px-4 py-2 rounded-full ${activeSubcategory === subcat
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                        }`}
+                    >
+                      {subcat}
+                      <ChevronRight />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="lg:hidden my-6">
+              <Carousel className='overflow-hidden'>
+                <CarouselContent>
+                  {subCategories[activeTab as keyof typeof subCategories].items.map((subcat) => (
+                    <CarouselItem key={subcat} className="basis-auto">
+                      <Button
+                        onClick={() => setActiveSubcategory(subcat)}
+                        variant={activeSubcategory === subcat ? "default" : "outline"}
+                        className="whitespace-nowrap"
+                      >
+                        {subcat}
+                      </Button>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
+            </div>
+            <div className="p-5 lg:p-0 lg:w-3/4 items-center grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {listings.map((listing) => renderCard(listing))}
+            </div></div>
+          {hasMore && (
+            <div className="text-center mt-8">
+              <Button onClick={handleShowMore}>Show More</Button>
+            </div>
+          )}
+
+          {/* Benefits Section */}
+          <section className="p-2 lg:p-10 mt-10">
+            <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Why List With Us?</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reach More Customers</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Get exposed to a wide audience actively looking for services, events, stays, and experiences.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Easy Management</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Manage your listings, bookings, and customer interactions all in one place.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Grow Your Business</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>Increase your visibility and revenue with our powerful platform and marketing tools.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
+          {/* Partners Section */}
+          <section className="flex-grow">
+            <HomepageSections />
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+
+export default HomePage;

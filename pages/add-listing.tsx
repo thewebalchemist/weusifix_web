@@ -4,20 +4,19 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
-import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
-import { auth, storage } from '../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Checkbox } from '@/components/ui/checkbox';
 import AuthDialog from '@/components/AuthDialog';
 import { useDropzone } from 'react-dropzone';
-import { fetchUserDetails, UserData } from '../lib/userUtils';
-import { withAuth } from '@/contexts/withAuth';
-
+import { supabase } from '@/lib/supabase';
+import slugify from 'slugify';
+import { v4 as uuidv4 } from 'uuid';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuth } from '../contexts/AuthContext';
 
 // Dynamically import the Map component
 const DynamicMap = dynamic(() => import('@/components/MapComponent'), {
@@ -59,7 +58,7 @@ const TimePicker = ({ value, onChange }) => {
 };
 
 const AddListingForm = () => {
-  const { user, loading } = useFirebaseAuth();
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,12 +84,11 @@ const AddListingForm = () => {
       slots: []
     },
     bookingEnabled: false,
-    userDetails: {
-      uid: '',
+    listingUserDetails: {
       name: '',
-      profilePic: null,
-      phoneNumber: '',
       email: '',
+      phoneNumber: '',
+      profilePic: null,
       bio: '',
       socialMedia: {
         website: '',
@@ -100,17 +98,21 @@ const AddListingForm = () => {
         youtube: ''
       }
     },
+    priceCurrency: 'KES',
+    // Service-specific fields
     serviceCategory: '',
+    // Event-specific fields
     eventDate: null,
     eventTime: null,
     capacity: '',
     eventPricing: [],
+    // Stay-specific fields
     checkInTime: null,
     checkOutTime: null,
     stayAvailability: [],
     amenities: [],
     stayPrice: '',
-    priceCurrency: 'KES',
+    // Experience-specific fields
     experienceCategory: '',
     duration: '',
     included: '',
@@ -121,56 +123,62 @@ const AddListingForm = () => {
       teens: '',
       groups: '',
       families: ''
-    }
+    },
+    slug: ''
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      const user = auth.currentUser;
-      if (!user) {
-        console.log('User is not authenticated');
-        setIsAuthDialogOpen(true);
-        setIsLoading(false);
-      } else {
-        console.log('User is authenticated:', user);
-        try {
-          const userData = await fetchUserDetails(user);
-          if (userData) {
-            setFormData(prevData => ({
-              ...prevData,
-              userDetails: {
-                uid: userData.uid,
-                name: userData.name,
-                email: userData.email,
-                phoneNumber: userData.phoneNumber,
-                profilePic: userData.profilePic,
-                bio: userData.bio,
-                socialMedia: userData.socialMedia
-              }
-            }));
-          } else {
-            throw new Error('Failed to fetch user details');
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-          toast.error('Failed to load user data. Please try again.');
-        } finally {
-          setIsLoading(false);
+    if (!user) {
+      console.log('User is not authenticated');
+      setIsAuthDialogOpen(true);
+      setIsLoading(false);
+      return;
+    }
+  
+    setFormData(prevData => ({
+      ...prevData,
+      listingUserDetails: {
+        name: '',
+        email: '',
+        phoneNumber: '',
+        profilePic: null,
+        bio: '',
+        socialMedia: {
+          website: '',
+          facebook: '',
+          twitter: '',
+          instagram: '',
+          youtube: ''
         }
       }
-    };
+    }));
+  
+    setIsLoading(false);
+  }, [user]);
 
-    fetchData();
-  }, []);
+  useEffect(() => {
+    if (formData.openingHours.enabled && Object.keys(formData.openingHours.hours).length === 0) {
+      const defaultHours = {};
+      ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach(day => {
+        defaultHours[day] = { open: '09:00', close: '17:00' };
+      });
+      setFormData(prevData => ({
+        ...prevData,
+        openingHours: {
+          ...prevData.openingHours,
+          hours: defaultHours
+        }
+      }));
+    }
+  }, [formData.openingHours.enabled]);
 
   const handleAuthDialogClose = () => {
     setIsAuthDialogOpen(false);
-    if (!auth.currentUser) {
+    if (!user) {
       router.push('/');
     }
   };
 
-  
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prevData => ({ ...prevData, [name]: value }));
@@ -195,88 +203,166 @@ const AddListingForm = () => {
     maxFiles: 6,
   });
 
-  const handleProfilePicChange = async (e) => {
-    const file = e.target.files[0];
-    const storageRef = ref(storage, `users/${user.uid}/profile-pic`);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    setFormData(prevData => ({ 
-      ...prevData, 
-      userDetails: { ...prevData.userDetails, profilePic: url }
+  const handleProfilePicChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && user) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `profiles/${user.id}/${fileName}`;
+
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from('profile-pictures')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicURL } = supabase.storage
+          .from('profile-pictures')
+          .getPublicUrl(filePath);
+
+        setFormData(prevData => ({
+          ...prevData,
+          listingUserDetails: { ...prevData.listingUserDetails, profilePic: publicURL.publicUrl }
+        }));
+      } catch (error) {
+        console.error('Error uploading profile picture:', error);
+        toast.error('Failed to upload profile picture. Please try again.');
+      }
+    }
+  };
+
+  const removeImage = (index) => {
+    setFormData(prevData => ({
+      ...prevData,
+      images: prevData.images.filter((_, i) => i !== index)
     }));
   };
 
+  const removeOpeningHour = (day) => {
+    setFormData(prevData => ({
+      ...prevData,
+      openingHours: {
+        ...prevData.openingHours,
+        hours: Object.fromEntries(
+          Object.entries(prevData.openingHours.hours).filter(([key]) => key !== day)
+        )
+      }
+    }));
+  };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth.currentUser) {
+    if (!user) {
       toast.error('You must be logged in to create a listing');
       return;
     }
     setIsSubmitting(true);
     try {
-      const token = await auth.currentUser.getIdToken();
-      
       // Upload new images
       const uploadedUrls = await Promise.all(
         formData.images.map(async (image) => {
           if (typeof image === 'string') return image; // Already uploaded
-          const storageRef = ref(storage, `listings/${auth.currentUser.uid}/${image.name}`);
-          await uploadBytes(storageRef, image);
-          return getDownloadURL(storageRef);
+          const fileExt = image.name.split('.').pop();
+          const fileName = `${uuidv4()}.${fileExt}`;
+          const filePath = `listings/${user.id}/${fileName}`;
+  
+          const { error: uploadError } = await supabase.storage
+            .from('listing-images')
+            .upload(filePath, image);
+  
+          if (uploadError) throw uploadError;
+  
+          const { data: publicURL } = supabase.storage
+            .from('listing-images')
+            .getPublicUrl(filePath);
+  
+          return publicURL.publicUrl;
         })
       );
   
-      const slugifiedTitle = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const listingId = `${listingType}/${slugifiedTitle}`;
+      const slug = await createUniqueSlug(formData.title, listingType);
   
-      const formDataToSubmit = { 
-        ...formData, 
-        listingType, 
-        listingId, 
-        isIndividual: listingType === 'service' ? isIndividual : undefined,
-        images: uploadedUrls
+      // Prepare common listing data
+      const commonListingData = {
+        user_id: user.id,
+        listing_type: listingType,
+        title: formData.title,
+        description: formData.description,
+        video_link: formData.videoLink,
+        location: `(${formData.location[0]},${formData.location[1]})`,
+        address: formData.address,
+        images: uploadedUrls,
+        featured_image_index: formData.featuredImageIndex,
+        booking_enabled: formData.bookingEnabled,
+        price_currency: formData.priceCurrency,
+        opening_hours: formData.openingHours,
+        availability: formData.availability,
+        listing_user_details: formData.listingUserDetails,
+        slug: slug
       };
-
-      // Remove fields not related to the current listing type
-      if (listingType !== 'service') delete formDataToSubmit.serviceCategory;
-      if (listingType !== 'event') {
-        delete formDataToSubmit.eventDate;
-        delete formDataToSubmit.eventTime;
-        delete formDataToSubmit.capacity;
-        delete formDataToSubmit.eventPricing;
+  
+      // Insert the new listing
+      const { data: newListing, error: listingError } = await supabase
+        .from('listings')
+        .insert(commonListingData)
+        .select()
+        .single();
+  
+      if (listingError) throw listingError;
+  
+      // Insert type-specific details
+      switch(listingType) {
+        case 'service':
+          await supabase.from('service_listings').insert({
+            listing_id: newListing.id,
+            service_category: formData.serviceCategory,
+            is_individual: isIndividual
+          });
+          break;
+        case 'event':
+          await supabase.from('event_listings').insert({
+            listing_id: newListing.id,
+            event_date: formData.eventDate,
+            event_time: formData.eventTime,
+            capacity: formData.capacity,
+            event_pricing: formData.eventPricing
+          });
+          break;
+        case 'stay':
+          await supabase.from('stay_listings').insert({
+            listing_id: newListing.id,
+            check_in_time: formData.checkInTime,
+            check_out_time: formData.checkOutTime,
+            stay_price: formData.stayPrice,
+            amenities: formData.amenities,
+            stay_availability: formData.stayAvailability
+          });
+          break;
+        case 'experience':
+          await supabase.from('experience_listings').insert({
+            listing_id: newListing.id,
+            experience_category: formData.experienceCategory,
+            duration: formData.duration,
+            included: formData.included,
+            group_size: formData.groupSize,
+            experience_pricing: formData.experiencePricing
+          });
+          break;
       }
-      if (listingType !== 'stay') {
-        delete formDataToSubmit.checkInTime;
-        delete formDataToSubmit.checkOutTime;
-        delete formDataToSubmit.stayAvailability;
-        delete formDataToSubmit.amenities;
-        delete formDataToSubmit.stayPrice;
+  
+      // Update user's hasListings flag
+      if (isFirstTimeListing) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ has_listings: true })
+          .eq('user_id', user.id);
+  
+        if (profileError) throw profileError;
       }
-      if (listingType !== 'experience') {
-        delete formDataToSubmit.experienceCategory;
-        delete formDataToSubmit.duration;
-        delete formDataToSubmit.included;
-        delete formDataToSubmit.groupSize;
-        delete formDataToSubmit.experiencePricing;
-      }
-
-      const response = await fetch('/api/listings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formDataToSubmit),
-      });
-
-      if (response.ok) {
-        toast.success('Listing added successfully!');
-        router.push('/dashboard');
-      } else {
-        const errorData = await response.json();
-        toast.error(`Failed to add listing: ${errorData.error || 'Unknown error'}`);
-      }
+  
+      toast.success('Listing added successfully!');
+      router.push('/dashboard');
     } catch (error) {
       console.error('Error adding listing:', error);
       toast.error('An error occurred while adding the listing. Please try again.');
@@ -284,11 +370,31 @@ const AddListingForm = () => {
       setIsSubmitting(false);
     }
   };
+  
+  const createUniqueSlug = async (title: string, listingType: string) => {
+    let slug = slugify(title, { lower: true, strict: true });
+    let uniqueSlug = slug;
+    let count = 0;
+  
+    while (true) {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('id')
+        .eq('slug', uniqueSlug)
+        .single();
+  
+      if (error || !data) {
+        return uniqueSlug;
+      }
+  
+      count++;
+      uniqueSlug = `${slug}-${count}`;
+    }
+  };
 
   if (isLoading) {
     return <div className="py-32 text-center mx-auto animate-pulse">Loading...</div>;
   }
-
 
   const handleNextStep = () => {
     if (step < steps.length - 1) {
@@ -312,7 +418,7 @@ const AddListingForm = () => {
           <Card 
             key={type} 
             className={`cursor-pointer ${listingType === type ? 'border-primary' : ''}`}
-            onClick={() => { setListingType(type); setStep(type === 'service' ? 1 : 2); }}
+            onClick={() => { setListingType(type); setStep(1); }}
           >
             <CardHeader>
               <CardTitle className="capitalize text-lg lg:text-3xl">{type}</CardTitle>
@@ -465,7 +571,7 @@ const AddListingForm = () => {
                   <SelectValue placeholder="Currency" />
                 </SelectTrigger>
                 <SelectContent>
-                <SelectItem value="KES">KES</SelectItem>
+                  <SelectItem value="KES">KES</SelectItem>
                   <SelectItem value="USD">USD</SelectItem>
                 </SelectContent>
               </Select>
@@ -544,13 +650,20 @@ const AddListingForm = () => {
                 <div 
                   key={index} 
                   className={`rounded-2xl cursor-pointer border p-2 ${index === formData.featuredImageIndex ? 'border-primary' : ''}`}
-                  onClick={() => setFormData(prevData => ({ ...prevData, featuredImageIndex: index }))}
                 >
                   <img 
                     src={typeof image === 'string' ? image : URL.createObjectURL(image)} 
                     alt={`Gallery item ${index + 1}`} 
                     className="w-full h-24 object-cover" 
+                    onClick={() => setFormData(prevData => ({ ...prevData, featuredImageIndex: index }))}
                   />
+                  <Button 
+                    type="button" 
+                    onClick={() => removeImage(index)}
+                    className="mt-2"
+                  >
+                    Remove
+                  </Button>
                 </div>
               ))}
             </div>
@@ -572,6 +685,9 @@ const AddListingForm = () => {
           value={formData.address}
           onChange={handleInputChange}
         />
+        <Label className='py-4'>
+          You can also pick an exact location on the map (optional)
+        </Label>
         <DynamicMap
           location={formData.location}
           setLocation={(location) => setFormData(prevData => ({ ...prevData, location }))}
@@ -595,11 +711,11 @@ const AddListingForm = () => {
         </div>
         {formData.openingHours.enabled && (
           <div className="space-y-2">
-            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+            {Object.entries(formData.openingHours.hours).map(([day, hours]) => (
               <div key={day} className="flex items-center space-x-2">
                 <Label className="w-24">{day}</Label>
                 <TimePicker
-                  value={formData.openingHours.hours[day]?.open || '09:00'}
+                  value={hours.open}
                   onChange={(time) => setFormData(prevData => ({
                     ...prevData,
                     openingHours: {
@@ -613,7 +729,7 @@ const AddListingForm = () => {
                 />
                 <span>to</span>
                 <TimePicker
-                  value={formData.openingHours.hours[day]?.close || '17:00'}
+                  value={hours.close}
                   onChange={(time) => setFormData(prevData => ({
                     ...prevData,
                     openingHours: {
@@ -625,6 +741,12 @@ const AddListingForm = () => {
                     }
                   }))}
                 />
+                <Button 
+                  type="button"
+                  onClick={() => removeOpeningHour(day)}
+                >
+                  Remove
+                </Button>
               </div>
             ))}
           </div>
@@ -713,7 +835,7 @@ const AddListingForm = () => {
   const renderUserDetails = () => (
     <Card className="mb-4">
       <CardHeader>
-        <CardTitle>Your Details</CardTitle>
+        <CardTitle>Your Details/Business Details</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Label>Profile Picture/Logo</Label>
@@ -726,51 +848,63 @@ const AddListingForm = () => {
         <Input
           name="name"
           placeholder="Your Name/Business Name"
-          value={formData.userDetails.name}
-          onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, name: e.target.value } }))}
+          value={formData.listingUserDetails.name}
+          onChange={(e) => setFormData(prevData => ({
+            ...prevData,
+            listingUserDetails: { ...prevData.listingUserDetails, name: e.target.value }
+          }))}
           required={isFirstTimeListing}
         />
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <Input
-            name="phone"
+            name="phoneNumber"
             placeholder="Phone/WhatsApp Number"
-            value={formData.userDetails.phoneNumber}
-            onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, phone: e.target.value } }))}
+            value={formData.listingUserDetails.phoneNumber}
+            onChange={(e) => setFormData(prevData => ({
+              ...prevData,
+              listingUserDetails: { ...prevData.listingUserDetails, phoneNumber: e.target.value }
+            }))}
             required={isFirstTimeListing}
           />
           <Input
             name="email"
             type="email"
             placeholder="Email"
-            value={formData.userDetails.email}
-            onChange={(e) => setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, email: e.target.value } }))}
+            value={formData.listingUserDetails.email}
+            onChange={(e) => setFormData(prevData => ({
+              ...prevData,
+              listingUserDetails: { ...prevData.listingUserDetails, email: e.target.value }
+            }))}
             required={isFirstTimeListing}
           />
         </div>
         <Textarea
           name="bio"
           placeholder="Bio (max 100 words)"
-          value={formData.userDetails.bio}
+          value={formData.listingUserDetails.bio}
           onChange={(e) => {
             const words = e.target.value.trim().split(/\s+/);
             if (words.length <= 100) {
-              setFormData(prevData => ({ ...prevData, userDetails: { ...prevData.userDetails, bio: e.target.value } }));
+              setFormData(prevData => ({
+                ...prevData,
+                listingUserDetails: { ...prevData.listingUserDetails, bio: e.target.value }
+              }));
             }
           }}
           required={isFirstTimeListing}
         />
-        {Object.keys(formData.userDetails.socialMedia).map((platform) => (
+        {Object.keys(formData.listingUserDetails.socialMedia).map((platform) => (
           <Input
             key={platform}
             name={`socialMedia.${platform}`}
             placeholder={`${platform.charAt(0).toUpperCase() + platform.slice(1)} Link`}
-            value={formData.userDetails.socialMedia[platform]}
+            value={formData.listingUserDetails.socialMedia[platform]}
             onChange={(e) => setFormData(prevData => ({
               ...prevData,
-              userDetails: {
-                ...prevData.userDetails,
+              listingUserDetails: {
+                ...prevData.listingUserDetails,
                 socialMedia: {
-                  ...prevData.userDetails.socialMedia,
+                  ...prevData.listingUserDetails.socialMedia,
                   [platform]: e.target.value
                 }
               }
@@ -1113,38 +1247,40 @@ const AddListingForm = () => {
   }
 
   return (
-    <div className="min-h-screen mx-auto py-28 lg:py-32 lg:max-w-5xl bg-gray-100 dark:bg-gray-900">
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <AuthDialog 
-          isOpen={isAuthDialogOpen} 
-          onClose={handleAuthDialogClose}
-        />
-        <div className="bg-white dark:bg-gray-800 overflow-hidden rounded-3xl">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="space-y-6">
-              {steps[step].component()}
-              <div className="flex justify-between">
-                {step > 0 && (
-                  <Button type="button" onClick={handlePreviousStep}>Previous</Button>
-                )}
-                {step < steps.length - 1 ? (
-                  <Button type="button" onClick={handleNextStep}>Next</Button>
-                ) : (
-                  <Button 
-                    type="button" 
-                    onClick={handleSubmit} 
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Submitting...' : 'Submit Listing'}
-                  </Button>
-                )}
+    <ProtectedRoute>
+      <div className="min-h-screen mx-auto py-28 lg:py-32 lg:max-w-5xl bg-gray-100 dark:bg-gray-900">
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <AuthDialog 
+            isOpen={isAuthDialogOpen} 
+            onClose={handleAuthDialogClose}
+          />
+          <div className="bg-white dark:bg-gray-800 overflow-hidden rounded-3xl">
+            <div className="px-4 py-5 sm:p-6">
+              <div className="space-y-6">
+                {steps[step].component()}
+                <div className="flex justify-between">
+                  {step > 0 && (
+                    <Button type="button" onClick={handlePreviousStep}>Previous</Button>
+                  )}
+                  {step < steps.length - 1 ? (
+                    <Button type="button" onClick={handleNextStep}>Next</Button>
+                  ) : (
+                    <Button 
+                      type="button" 
+                      onClick={handleSubmit} 
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'Submitting...' : 'Submit Listing'}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </ProtectedRoute>
   );
 };
 
-export default withAuth(AddListingForm);
+export default AddListingForm;

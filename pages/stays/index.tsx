@@ -1,109 +1,151 @@
-// pages/stays/index.tsx
-import { GetServerSideProps } from 'next';
-import { useRouter } from 'next/router';
-import { BadgeCheck, Heart, Star, Users, BedDouble } from 'lucide-react';
-import clientPromise from '@/lib/mongodb';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { BadgeCheck, Heart } from 'lucide-react';
 
 interface Stay {
-  _id: string;
-  listingType: 'stay';
+  id: string;
+  listing_type: 'stay';
   title: string;
   description: string;
+  location: string;
   address: string;
   images: string[];
-  userDetails: {
-    profilePic: string;
-    email: string;
-  };
-  stayPrice: string;
-  priceCurrency: string;
-  amenities: string[];
-  checkInTime: string;
-  checkOutTime: string;
+  price: number;
+  amenities?: string[];
   slug: string;
 }
 
-interface StaysPageProps {
-  stays: Stay[];
-}
+const StaysPage: React.FC = () => {
+  const [listings, setListings] = useState<Stay[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const ITEMS_PER_PAGE = 12;
 
-const StaysPage: React.FC<StaysPageProps> = ({ stays }) => {
-  const router = useRouter();
+  useEffect(() => {
+    fetchListings();
+  }, [page, searchTerm]);
 
-  const renderStayCard = (stay: Stay) => {
-    
+  const fetchListings = async () => {
+    try {
+      let query = supabase
+        .from('listings')
+        .select('*')
+        .eq('listing_type', 'stay')
+        .order('created_at', { ascending: false })
+        .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
 
-    return (
-      <Link 
-        href={`/stays/${stay.slug}`}
-        key={stay._id}
-      >
-      <div key={stay._id} className="relative rounded-2xl bg-white dark:bg-gray-800 cursor-pointer shadow-md">
+      if (searchTerm) {
+        query = query.ilike('title', `%${searchTerm}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (data) {
+        setListings(prevListings => page === 1 ? data : [...prevListings, ...data]);
+        setHasMore(data.length === ITEMS_PER_PAGE);
+      }
+    } catch (error) {
+      console.error('Error fetching stays:', error);
+    }
+  };
+
+  const handleShowMore = () => {
+    setPage(prevPage => prevPage + 1);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    fetchListings();
+  };
+
+  const getRandomAmenities = (amenities: string[] | undefined, count: number): string[] => {
+    if (!amenities || amenities.length === 0) {
+      return ['No amenities listed'];
+    }
+    const shuffled = [...amenities].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, Math.min(count, shuffled.length));
+  };
+
+  const renderCard = (listing: Stay) => (
+    <Link href={`/stays/${listing.slug}`} key={listing.id}>
+      <div className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" >
         <div className="p-2">
           <div className="relative">
-            <img src={stay.images[0]} alt={stay.title} className="w-full h-48 object-cover rounded-2xl" />
+            <img src={listing.images[0]} alt={listing.title} className="w-full h-40 object-cover rounded-2xl" />
             <span className="absolute flex gap-1 items-center justify-between top-2 right-2 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
               <BadgeCheck className='w-3.5 h-3.5' />
               Verified
             </span>
           </div>
         </div>
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-2">
+        <div className="py-4 px-2 flex flex-col justify-between">
+          <div className=" flex justify-between items-center py-2">
             <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
               Stay
             </span>
+            <span className='text-sm text-gray-600 dark:text-gray-300'>
+              <span className='font-bold'>${listing.price}/</span> night
+            </span>
           </div>
-          <h2 className='text-lg font-semibold text-gray-800 dark:text-white mb-1'>{stay.title}</h2>
-          <p className='text-sm text-gray-500 dark:text-gray-400 mb-2'>{stay.address}</p>
-          <p className='text-lg font-bold text-gray-900 dark:text-white mb-2'>{stay.priceCurrency} {stay.stayPrice} <span className="text-sm font-normal">/ night</span></p>
-          <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-300 mb-4">
-            <div className="flex items-center">
-              <BedDouble className="w-4 h-4 mr-1" />
-              <span>{stay.amenities.includes('Kitchen') ? 'Kitchen' : 'No kitchen'}</span>
-            </div>
+          <div>
+            <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
+            <p className='text-gray-500 dark:text-gray-500'>{listing.address}</p>
           </div>
-          <div className='flex justify-between items-center'>
-            <div className="flex items-center">
-              <img src={stay.userDetails.profilePic} alt={stay.userDetails.email} className="w-8 h-8 rounded-full mr-2" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">{stay.userDetails.email}</span>
-            </div>
-            <Heart className='text-gray-400 hover:text-red-500 cursor-pointer' />
+          <div className="grid grid-cols-2 items-center py-2 text-gray-800 dark:text-gray-300">
+            {getRandomAmenities(listing.amenities, 4).map((amenity, index) => (
+              <div key={index} className={`${index % 2 === 0 ? 'border-r' : ''} ${index < 2 ? 'border-b' : ''} border-gray-300 dark:border-gray-600 ${index % 2 === 0 ? 'pr-2' : 'pl-2'}`}>
+                <span className='p-2 text-xs'>
+                  {amenity}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="p-2">
+          <div className='flex justify-between space-x-4'>
+            <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart /></span>
+            <button className="bg-primary hover:bg-transparent border border-primary hover:text-primary text-white w-full py-2 rounded-2xl">View Details</button>
           </div>
         </div>
       </div>
-      </Link>
-    );
-  };
+    </Link>
+  );
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Stays</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {stays.map(renderStayCard)}
+    <div className="py-28 lg:py-32 mx-auto lg:max-w-6xl py-8 px-4">
+      <h1 className="text-4xl font-bold mb-8 text-center">Stays</h1>
+      
+      {/* <form onSubmit={handleSearch} className="mb-8">
+        <div className="flex gap-4">
+          <Input
+            type="text"
+            placeholder="Search stays..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <Button type="submit">Search</Button>
         </div>
+      </form> */}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {listings.map((listing) => renderCard(listing))}
       </div>
+
+      {hasMore && (
+        <div className="text-center mt-8">
+          <Button onClick={handleShowMore}>Show More</Button>
+        </div>
+      )}
     </div>
   );
-};
-
-export const getServerSideProps: GetServerSideProps = async () => {
-  const client = await clientPromise;
-  const db = client.db();
-
-  const stays = await db.collection('listings').find({ listingType: 'stay' }).toArray();
-
-  return {
-    props: {
-      stays: JSON.parse(JSON.stringify(stays.map(stay => ({
-        ...stay,
-        _id: stay._id.toString(),
-        listingType: 'stay' // Ensure this is set correctly
-      })))),
-    },
-  };
 };
 
 export default StaysPage;

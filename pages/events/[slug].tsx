@@ -1,23 +1,23 @@
-// pages/events/[slug].tsx
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { EventListing } from '@/components/SingleListingPage';
-import clientPromise from '@/lib/mongodb';
+import { supabase } from '@/lib/supabase';
 import Head from 'next/head';
 
 interface Event {
-  _id: string;
-  listingType: 'event';
+  id: string;
+  listing_type: 'event';
   title: string;
   description: string;
   address: string;
   images: string[];
-  userDetails: {
-    profilePic: string;
+  listing_user_details: {
+    name: string;
     email: string;
-    phone: string;
+    phone_number: string;
+    profile_pic: string | null;
     bio: string;
-    socialMedia: {
+    social_media: {
       website: string;
       facebook: string;
       twitter: string;
@@ -25,14 +25,15 @@ interface Event {
       youtube: string;
     }
   };
-  eventDate: string;
-  eventTime: string;
+  event_date: string;
+  event_time: string;
   capacity: string;
-  eventPricing: Array<{ type: string; price: string }>;
-  priceCurrency: string;
-  bookingEnabled: boolean;
-  videoLink: string;
+  event_pricing: Array<{ type: string; price: string }>;
+  price_currency: string;
+  booking_enabled: boolean;
+  video_link: string;
   slug: string;
+  location: [number, number];
 }
 
 interface EventPageProps {
@@ -64,12 +65,14 @@ export default function EventPage({ event }: EventPageProps) {
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { slug } = context.params as { slug: string };
 
-  const client = await clientPromise;
-  const db = client.db();
+  const { data: event, error } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('slug', slug)
+    .eq('listing_type', 'event')
+    .single();
 
-  const event = await db.collection('listings').findOne({ slug: slug, listingType: 'event' });
-
-  if (!event) {
+  if (error || !event) {
     return {
       notFound: true,
     };
@@ -77,7 +80,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   return {
     props: {
-      event: JSON.parse(JSON.stringify(event)),
+      event,
     },
   };
 };

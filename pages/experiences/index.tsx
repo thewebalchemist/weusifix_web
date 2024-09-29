@@ -1,111 +1,126 @@
-// pages/experiences.tsx
-import { GetServerSideProps } from 'next';
-import { useRouter } from 'next/router';
-import { Heart, BadgeCheck, MapPin, Clock, Users } from 'lucide-react';
-import clientPromise from '@/lib/mongodb';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Heart } from 'lucide-react';
 
 interface Experience {
-  _id: string;
-  listingType: 'experience';
+  id: string;
+  listing_type: 'experience';
   title: string;
   description: string;
+  location: string;
   address: string;
   images: string[];
-  userDetails: {
-    profilePic: string;
-    email: string;
-  };
-  experienceCategory: string;
-  duration: string;
-  groupSize: string;
-  experiencePricing: {
-    adults: string;
-    children: string;
-    teens: string;
-    groups: string;
-    families: string;
-  };
-  priceCurrency: string;
+  price: number;
   slug: string;
 }
 
-interface ExperiencesPageProps {
-  experiences: Experience[];
-}
+const ExperiencesPage: React.FC = () => {
+  const [listings, setListings] = useState<Experience[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const ITEMS_PER_PAGE = 12;
 
-const ExperiencesPage: React.FC<ExperiencesPageProps> = ({ experiences }) => {
-  const router = useRouter();
+  useEffect(() => {
+    fetchListings();
+  }, [page, searchTerm]);
 
-  const renderExperienceCard = (experience: Experience) => {
-    const handleCardClick = () => {
-      router.push(`/${experience.listingType}s/${experience.slug}`);
-    };
+  const fetchListings = async () => {
+    try {
+      let query = supabase
+        .from('listings')
+        .select('*')
+        .eq('listing_type', 'experience')
+        .order('created_at', { ascending: false })
+        .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
 
-    return (
-      <div key={experience._id} className="relative rounded-2xl overflow-hidden h-80 w-full cursor-pointer" onClick={handleCardClick}>
+      if (searchTerm) {
+        query = query.ilike('title', `%${searchTerm}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (data) {
+        setListings(prevListings => page === 1 ? data : [...prevListings, ...data]);
+        setHasMore(data.length === ITEMS_PER_PAGE);
+      }
+    } catch (error) {
+      console.error('Error fetching experiences:', error);
+    }
+  };
+
+  const handleShowMore = () => {
+    setPage(prevPage => prevPage + 1);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    fetchListings();
+  };
+
+  const renderCard = (listing: Experience) => (
+    <Link href={`/experiences/${listing.slug}`} key={listing.id}>
+      <div className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" >
         <div className="absolute inset-0">
-          <img 
-            src={experience.images[0]} 
-            alt={experience.title} 
-            className="w-full h-full object-cover hover:scale-110 transition-transform duration-300" 
+          <img
+            src={listing.images[0]}
+            alt={listing.title}
+            className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
           />
         </div>
         <div className="absolute top-0 left-0 right-0 p-4 ">
           <div className="flex justify-between items-center">
-            <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100 flex items-center">
-              <BadgeCheck className='w-3.5 h-3.5 mr-1' />
-              {experience.experienceCategory}
+            <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100 bg-opacity-80">
+              Experience
             </span>
             <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-700 bg-opacity-80'><Heart className='h-4 w-4' /></span>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 bg-gray-600 bg-opacity-80 p-4 rounded-b-2xl">
-          <h2 className="text-white text-lg font-semibold mb-1">{experience.title}</h2>
-          <p className="mb-2 text-gray-200 text-sm flex items-center">
-            <MapPin className="w-4 h-4 mr-1" />
-            {experience.address}
-          </p>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
-              <span className="font-bold">{experience.priceCurrency} {experience.experiencePricing.adults}/</span> person
-            </span>
-            <span className="text-sm text-white flex items-center">
-              <Clock className="w-4 h-4 mr-1" />
-              {experience.duration}
-            </span>
-            <span className="text-sm text-white flex items-center">
-              <Users className="w-4 h-4 mr-1" />
-              Max {experience.groupSize}
-            </span>
-          </div>
+          <h2 className="text-white text-lg font-semibold mb-1">{listing.title}</h2>
+          <p className="mb-2 text-gray-200 text-sm">{listing.location}</p>
+          <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
+            <span className="font-bold">${listing.price}/</span> person
+          </span>
         </div>
       </div>
-    );
-  };
+    </Link>
+  );
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900 min-h-screen py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Experiences</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {experiences.map(renderExperienceCard)}
+    <div className="py-28 lg:py-32 mx-auto lg:max-w-6xl py-8 px-4">
+      <h1 className="text-4xl font-bold mb-8 text-center">Experiences</h1>
+      
+      {/* <form onSubmit={handleSearch} className="mb-8">
+        <div className="flex gap-4">
+          <Input
+            type="text"
+            placeholder="Search experiences..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <Button type="submit">Search</Button>
         </div>
+      </form> */}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {listings.map((listing) => renderCard(listing))}
       </div>
+
+      {hasMore && (
+        <div className="text-center mt-8">
+          <Button onClick={handleShowMore}>Show More</Button>
+        </div>
+      )}
     </div>
   );
-};
-
-export const getServerSideProps: GetServerSideProps = async () => {
-  const client = await clientPromise;
-  const db = client.db();
-
-  const experiences = await db.collection('listings').find({ listingType: 'experience' }).toArray();
-
-  return {
-    props: {
-      experiences: JSON.parse(JSON.stringify(experiences)),
-    },
-  };
 };
 
 export default ExperiencesPage;

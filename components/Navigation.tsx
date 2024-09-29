@@ -21,10 +21,10 @@ interface NavigationProps {
 
 
 const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onAddListingClick }) => {
+  const { user, logout } = useAuth();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
 
   const linkClasses = (path: string) =>
     `flex items-center py-2 px-2 lg:px-3 rounded-full text-sm font-medium transition-colors ${router.pathname === path

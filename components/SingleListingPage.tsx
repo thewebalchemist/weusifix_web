@@ -7,6 +7,16 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Calendar } from './ui/calendar';
 import { Button } from './ui/button';
+import dynamic from 'next/dynamic';
+import { 
+  FacebookShareButton, 
+  TwitterShareButton, 
+  WhatsappShareButton,
+  FacebookIcon,
+  TwitterIcon,
+  WhatsappIcon
+} from 'react-share';
+import { Label } from './ui/label';
 
 const StarRating = ({ rating }) => {
   return (
@@ -19,28 +29,33 @@ const StarRating = ({ rating }) => {
   );
 };
 
+const DynamicMap = dynamic(() => import('@/components/DisplayMap'), {
+  ssr: false,
+  loading: () => <p>Loading map...</p>,
+});
+
 const renderImages = (images) => {
   if (images.length === 1) {
     return (
       <div className="w-full">
-        <img src={images[0]} alt="Item" className="w-full h-96 object-cover rounded-3xl" />
+        <img src={images[0]} alt="Service" className="w-full h-96 object-cover rounded-3xl" />
       </div>
     );
   } else if (images.length === 2) {
     return (
       <div className="grid grid-cols-2 gap-2">
         {images.map((image, index) => (
-          <img key={index} src={image} alt={`Item ${index + 1}`} className="w-full h-96 object-cover rounded-3xl" />
+          <img key={index} src={image} alt={`Service ${index + 1}`} className="w-full h-96 object-cover rounded-3xl" />
         ))}
       </div>
     );
   } else {
     return (
       <div className="grid grid-cols-2 gap-2">
-        <img src={images[0]} alt="Item 1" className="w-full h-96 object-cover rounded-3xl" />
+        <img src={images[0]} alt="Service 1" className="w-full h-96 object-cover rounded-3xl" />
         <div className="grid grid-rows-2 gap-2">
-          <img src={images[1]} alt="Item 2" className="w-full h-48 object-cover rounded-3xl" />
-          <img src={images[2]} alt="Item 3" className="w-full h-48 object-cover rounded-3xl" />
+          <img src={images[1]} alt="Service 2" className="w-full h-48 object-cover rounded-3xl" />
+          <img src={images[2]} alt="Service 3" className="w-full h-48 object-cover rounded-3xl" />
         </div>
       </div>
     );
@@ -49,6 +64,7 @@ const renderImages = (images) => {
 
 const ServiceListing = ({ service }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   return (
     <div className="min-h-screen py-28 lg:py-32 mx-auto lg:max-w-6xl">
@@ -67,13 +83,21 @@ const ServiceListing = ({ service }) => {
                 <TabsTrigger value="availability">Availability</TabsTrigger>
               </TabsList>
               <TabsContent value="description">
-                <p className="text-gray-800 dark:text-gray-300">{service.description}</p>
+                <p className="text-gray-800 dark:text-gray-300 mb-4">{service.description}</p>
+                {service.location && (
+                  <div className="mt-4">
+                    <Label className="py-4 text-lg">
+                      Location
+                    </Label>
+                    <DynamicMap location={service.location} />
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="availability">
-                {service.openingHours.enabled ? (
+                {service.opening_hours.enabled ? (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Opening Hours</h3>
-                    {Object.entries(service.openingHours.hours).map(([day, hours]) => (
+                    {Object.entries(service.opening_hours.hours).map(([day, hours]) => (
                       <div key={day} className="flex justify-between">
                         <span>{day}</span>
                         <span>{hours.open} - {hours.close}</span>
@@ -96,10 +120,11 @@ const ServiceListing = ({ service }) => {
               </TabsContent>
             </Tabs>
           </div>
+
           <div className="lg:w-1/3">
             <Card className="mb-6">
-              <CardContent className='pt-6'>
-                <div className="flex space-x-2 mb-4">
+            <CardContent className='pt-6'>
+            <div className="flex space-x-2">
                   <Button variant="outline" className="flex-1">
                     <Share className="mr-2 h-4 w-4" /> Share
                   </Button>
@@ -116,20 +141,20 @@ const ServiceListing = ({ service }) => {
               <CardContent>
                 <div className="flex items-center mb-4">
                   <Avatar className="w-16 h-16 mr-4">
-                    <AvatarImage src={service.userDetails.profilePic} alt={service.userDetails.email} />
+                    <AvatarImage src={service.listing_user_details.profilePic} alt={service.listing_user_details.email} />
                     <AvatarFallback><User /></AvatarFallback>
                   </Avatar>
                   <div>
-                  <h3 className="text-lg font-semibold">{service.userDetails.name}</h3>
-                    <h3 className="text-lg font-semibold">{service.userDetails.email}</h3>
+                  <h3 className="text-md lg:text-lg font-semibold">{service.listing_user_details.name}</h3>
+                    <h3 className="text-sm font-semibold">{service.listing_user_details.email}</h3>
                     <p className="text-sm text-gray-500">{service.isIndividual ? 'Individual' : 'Business'}</p>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">{service.userDetails.bio}</p>
+                <p className="text-sm text-gray-600 mb-4">{service.listing_user_details.bio}</p>
                 <div className="flex space-x-2 mb-4"><Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `tel:${service.userDetails.email}`}
+                    onClick={() => window.location.href = `tel:${service.listing_user_details.email}`}
                   >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
                   </Button>
@@ -137,24 +162,24 @@ const ServiceListing = ({ service }) => {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `mailto:${service.userDetails.phone}`}
+                    onClick={() => window.location.href = `mailto:${service.listing_user_details.phoneNumber}`}
                   >
                     <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">
-                  {service.userDetails.socialMedia.facebook && (
-                    <a href={service.userDetails.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                  {service.listing_user_details.socialMedia.facebook && (
+                    <a href={service.listing_user_details.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
                       <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
                     </a>
                   )}
-                  {service.userDetails.socialMedia.twitter && (
-                    <a href={service.userDetails.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
+                  {service.listing_user_details.socialMedia.twitter && (
+                    <a href={service.listing_user_details.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
                       <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
                     </a>
                   )}
-                  {service.userDetails.socialMedia.instagram && (
-                    <a href={service.userDetails.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                  {service.listing_user_details.socialMedia.instagram && (
+                    <a href={service.listing_user_details.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
                       <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
                     </a>
                   )}
@@ -199,6 +224,14 @@ const EventListing = ({ event }) => {
               </TabsList>
               <TabsContent value="description">
                 <p className="text-gray-800 dark:text-gray-300">{event.description}</p>
+                {event.location && (
+                  <div className="mt-4">
+                    <Label className="py-4 text-lg">
+                      Location
+                    </Label>
+                    <DynamicMap location={event.location} />
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="schedule">
                 {event.schedule.map((item, index) => (
@@ -230,19 +263,19 @@ const EventListing = ({ event }) => {
               <CardContent>
                 <div className="flex items-center mb-4">
                   <Avatar className="w-16 h-16 mr-4">
-                    <AvatarImage src={event.userDetails.profilePic} alt={event.userDetails.name} />
+                    <AvatarImage src={event.listing_user_details.profilePic} alt={event.listing_user_details.name} />
                     <AvatarFallback><User /></AvatarFallback>
                   </Avatar>
                   <div>
-                  <h3 className="text-lg font-semibold">{event.userDetails.name}</h3>
-                    <h3 className="text-lg font-semibold">{event.userDetails.email}</h3>
+                  <h3 className="text-lg font-semibold">{event.listing_user_details.name}</h3>
+                    <h3 className="text-lg font-semibold">{event.listing_user_details.email}</h3>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">{event.userDetails.bio}</p>
+                <p className="text-sm text-gray-600 mb-4">{event.listing_user_details.bio}</p>
                 <div className="flex space-x-2 mb-4"><Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `tel:${event.userDetails.email}`}
+                    onClick={() => window.location.href = `tel:${event.listing_user_details.email}`}
                   >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
                   </Button>
@@ -250,24 +283,24 @@ const EventListing = ({ event }) => {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `mailto:${event.userDetails.phone}`}
+                    onClick={() => window.location.href = `mailto:${event.listing_user_details.phone}`}
                   >
                     <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">
-                  {event.userDetails.socialMedia.facebook && (
-                    <a href={event.userDetails.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                  {event.listing_user_details.socialMedia.facebook && (
+                    <a href={event.listing_user_details.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
                       <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
                     </a>
                   )}
-                  {event.userDetails.socialMedia.twitter && (
-                    <a href={event.userDetails.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
+                  {event.listing_user_details.socialMedia.twitter && (
+                    <a href={event.listing_user_details.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
                       <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
                     </a>
                   )}
-                  {event.userDetails.socialMedia.instagram && (
-                    <a href={event.userDetails.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                  {event.listing_user_details.socialMedia.instagram && (
+                    <a href={event.listing_user_details.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
                       <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
                     </a>
                   )}
@@ -324,26 +357,46 @@ const StayListing = ({ stay }) => {
               </TabsList>
               <TabsContent value="description">
                 <p className="text-gray-800 dark:text-gray-300">{stay.description}</p>
+                {stay.location && (
+                  <div className="mt-4">
+                    <Label className="py-4 text-lg">
+                      Location
+                    </Label>
+                    <DynamicMap location={stay.location} />
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="amenities">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {stay.amenities.map((amenity, index) => (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {stay.amenities && stay.amenities.length > 0 ? (
+                  stay.amenities.map((amenity, index) => (
                     <div key={index} className="flex items-center p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
                       <span>{amenity}</span>
                     </div>
-                  ))}
-                </div>
-              </TabsContent>
-              <TabsContent value="availability">
-                <div className="space-y-4">
-                  {stay.stayAvailability.map((period, index) => (
+                  ))
+                ) : (
+                  <div className="col-span-2 md:col-span-3 p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
+                    No amenities listed for this stay.
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            <TabsContent value="availability">
+              <div className="space-y-4">
+                {stay.stayAvailability && stay.stayAvailability.length > 0 ? (
+                  stay.stayAvailability.map((period, index) => (
                     <div key={index} className="p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
                       <p>From: {new Date(period.start).toLocaleDateString()}</p>
                       <p>To: {new Date(period.end).toLocaleDateString()}</p>
                     </div>
-                  ))}
-                </div>
-              </TabsContent>
+                  ))
+                ) : (
+                  <div className="p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
+                    No availability information provided for this stay.
+                  </div>
+                )}
+              </div>
+            </TabsContent>
             </Tabs>
           </div>
           <div className="lg:w-1/3">
@@ -366,19 +419,19 @@ const StayListing = ({ stay }) => {
               <CardContent>
                 <div className="flex items-center mb-4">
                   <Avatar className="w-16 h-16 mr-4">
-                    <AvatarImage src={stay.userDetails.profilePic} alt={stay.userDetails.name} />
+                    <AvatarImage src={stay.listing_user_details.profilePic} alt={stay.listing_user_details.name} />
                     <AvatarFallback><User /></AvatarFallback>
                   </Avatar>
                   <div>
-                  <h3 className="text-lg font-semibold">{stay.userDetails.name}</h3>
-                    <h3 className="text-lg font-semibold">{stay.userDetails.email}</h3>
+                  <h3 className="text-lg font-semibold">{stay.listing_user_details.name}</h3>
+                    <h3 className="text-lg font-semibold">{stay.listing_user_details.email}</h3>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">{stay.userDetails.bio}</p>
+                <p className="text-sm text-gray-600 mb-4">{stay.listing_user_details.bio}</p>
                 <div className="flex space-x-2 mb-4"><Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `tel:${stay.userDetails.email}`}
+                    onClick={() => window.location.href = `tel:${stay.listing_user_details.email}`}
                   >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
                   </Button>
@@ -386,24 +439,24 @@ const StayListing = ({ stay }) => {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `mailto:${stay.userDetails.phone}`}
+                    onClick={() => window.location.href = `mailto:${stay.listing_user_details.phone}`}
                   >
                     <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">
-                  {stay.userDetails.socialMedia.facebook && (
-                    <a href={stay.userDetails.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                  {stay.listing_user_details.socialMedia.facebook && (
+                    <a href={stay.listing_user_details.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
                       <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
                     </a>
                   )}
-                  {stay.userDetails.socialMedia.twitter && (
-                    <a href={stay.userDetails.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
+                  {stay.listing_user_details.socialMedia.twitter && (
+                    <a href={stay.listing_user_details.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
                       <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
                     </a>
                   )}
-                  {stay.userDetails.socialMedia.instagram && (
-                    <a href={stay.userDetails.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                  {stay.listing_user_details.socialMedia.instagram && (
+                    <a href={stay.listing_user_details.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
                       <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
                     </a>
                   )}
@@ -415,7 +468,7 @@ const StayListing = ({ stay }) => {
                 <CardTitle>Book this Stay</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold mb-4">{stay.priceCurrency} {stay.stayPrice} / night</p>
+                <p className="text-2xl font-bold mb-4">{stay.priceCurrency} {stay.stay_price} / night</p>
                 <div className="space-y-4">
                   <div className='space-y-4'>
                     <label className="block text-lg font-medium text-gray-700 dark:text-gray-300">Check-in</label>
@@ -470,6 +523,14 @@ const ExperienceListing = ({ experience }) => {
               </TabsList>
               <TabsContent value="description">
                 <p className="text-gray-800 dark:text-gray-300">{experience.description}</p>
+                {experience.location && (
+                  <div className="mt-4">
+                    <Label className="py-4 text-lg">
+                      Location
+                    </Label>
+                    <DynamicMap location={experience.location} />
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="itinerary">
                 {experience.itinerary.map((item, index) => (
@@ -519,19 +580,19 @@ const ExperienceListing = ({ experience }) => {
               <CardContent>
                 <div className="flex items-center mb-4">
                   <Avatar className="w-16 h-16 mr-4">
-                    <AvatarImage src={experience.userDetails.profilePic} alt={experience.userDetails.name} />
+                    <AvatarImage src={experience.listing_user_details.profilePic} alt={experience.listing_user_details.name} />
                     <AvatarFallback><User /></AvatarFallback>
                   </Avatar>
                   <div>
-                  <h3 className="text-lg font-semibold">{experience.userDetails.name}</h3>
-                    <h3 className="text-lg font-semibold">{experience.userDetails.email}</h3>
+                  <h3 className="text-lg font-semibold">{experience.listing_user_details.name}</h3>
+                    <h3 className="text-lg font-semibold">{experience.listing_user_details.email}</h3>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">{experience.userDetails.bio}</p>
+                <p className="text-sm text-gray-600 mb-4">{experience.listing_user_details.bio}</p>
                 <div className="flex space-x-2 mb-4"><Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `tel:${experience.userDetails.email}`}
+                    onClick={() => window.location.href = `tel:${experience.listing_user_details.email}`}
                   >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
                   </Button>
@@ -539,24 +600,24 @@ const ExperienceListing = ({ experience }) => {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `mailto:${experience.userDetails.phone}`}
+                    onClick={() => window.location.href = `mailto:${experience.listing_user_details.phone}`}
                   >
                     <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
                 </div>
                 <div className="flex justify-center space-x-4">
-                  {experience.userDetails.socialMedia.facebook && (
-                    <a href={experience.userDetails.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
+                  {experience.listing_user_details.socialMedia.facebook && (
+                    <a href={experience.listing_user_details.socialMedia.facebook} target="_blank" rel="noopener noreferrer">
                       <Facebook className="w-6 h-6 text-blue-600 cursor-pointer" />
                     </a>
                   )}
-                  {experience.userDetails.socialMedia.twitter && (
-                    <a href={experience.userDetails.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
+                  {experience.listing_user_details.socialMedia.twitter && (
+                    <a href={experience.listing_user_details.socialMedia.twitter} target="_blank" rel="noopener noreferrer">
                       <Twitter className="w-6 h-6 text-blue-400 cursor-pointer" />
                     </a>
                   )}
-                  {experience.userDetails.socialMedia.instagram && (
-                    <a href={experience.userDetails.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
+                  {experience.listing_user_details.socialMedia.instagram && (
+                    <a href={experience.listing_user_details.socialMedia.instagram} target="_blank" rel="noopener noreferrer">
                       <Instagram className="w-6 h-6 text-pink-600 cursor-pointer" />
                     </a>
                   )}

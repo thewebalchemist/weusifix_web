@@ -1,29 +1,29 @@
-// pages/stays/[id].tsx
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { StayListing } from '@/components/SingleListingPage';
-import clientPromise from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
+import { supabase } from '@/lib/supabase';
 import Head from 'next/head';
 
 interface Stay {
-  _id: string;
+  id: string;
+  listing_type: 'stay';
   title: string;
   description: string;
   address: string;
   images: string[];
-  stayPrice: string;
-  priceCurrency: string;
-  checkInTime: string;
-  checkOutTime: string;
-  amenities: string[];
-  stayAvailability: Array<{ start: string; end: string }>;
-  userDetails: {
-    profilePic: string;
-    phone: string;
+  stay_price: string;
+  price_currency: string;
+  check_in_time: string;
+  check_out_time: string;
+  amenities?: string[];
+  stay_availability: Array<{ start: string; end: string }>;
+  listing_user_details: {
+    name: string;
     email: string;
+    phone_number: string;
+    profile_pic: string | null;
     bio: string;
-    socialMedia: {
+    social_media: {
       website: string;
       facebook: string;
       twitter: string;
@@ -31,8 +31,9 @@ interface Stay {
       youtube: string;
     }
   };
-  bookingEnabled: boolean;
+  booking_enabled: boolean;
   slug: string;
+  location: [number, number];
 }
 
 interface StayPageProps {
@@ -64,12 +65,14 @@ export default function StayPage({ stay }: StayPageProps) {
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { slug } = context.params as { slug: string };
 
-  const client = await clientPromise;
-  const db = client.db();
+  const { data: stay, error } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('slug', slug)
+    .eq('listing_type', 'stay')
+    .single();
 
-  const stay = await db.collection('listings').findOne({ slug: slug, listingType: 'stay' });
-
-  if (!stay) {
+  if (error || !stay) {
     return {
       notFound: true,
     };
@@ -77,7 +80,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   return {
     props: {
-      stay: JSON.parse(JSON.stringify(stay)),
+      stay,
     },
   };
 };

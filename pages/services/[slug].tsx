@@ -1,24 +1,23 @@
-// pages/services/[id].tsx
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { ServiceListing } from '@/components/SingleListingPage';
-import clientPromise from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
+import { supabase } from '@/lib/supabase';
 import Head from 'next/head';
 
 interface Service {
-  _id: string;
-  listingType: 'service';
+  id: string;
+  listing_type: 'service';
   title: string;
   description: string;
   address: string;
   images: string[];
-  userDetails: {
-    profilePic: string;
+  listing_user_details: {
+    name: string;
     email: string;
-    phone: string;
+    phone_number: string;
+    profile_pic: string | null;
     bio: string;
-    socialMedia: {
+    social_media: {
       website: string;
       facebook: string;
       twitter: string;
@@ -26,9 +25,9 @@ interface Service {
       youtube: string;
     }
   };
-  serviceCategory: string;
-  isIndividual: boolean;
-  openingHours: {
+  service_category: string;
+  is_individual: boolean;
+  opening_hours: {
     enabled: boolean;
     hours: Record<string, { open: string; close: string; }>;
   };
@@ -36,9 +35,10 @@ interface Service {
     enabled: boolean;
     slots: Array<{ start: string; end: string; }>;
   };
-  bookingEnabled: boolean;
-  videoLink: string;
+  booking_enabled: boolean;
+  video_link: string;
   slug: string;
+  location: [number, number];
 }
 
 interface ServicePageProps {
@@ -59,7 +59,7 @@ export default function ServicePage({ service }: ServicePageProps) {
   return (
     <>
       <Head>
-        <title>{service.title} | Your Website Name</title>
+        <title>{service.title} | Weusifix</title>
         <meta name="description" content={service.description.substring(0, 160)} />
       </Head>
       <ServiceListing service={service} />
@@ -70,12 +70,14 @@ export default function ServicePage({ service }: ServicePageProps) {
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { slug } = context.params as { slug: string };
 
-  const client = await clientPromise;
-  const db = client.db();
+  const { data: service, error } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('slug', slug)
+    .eq('listing_type', 'service')
+    .single();
 
-  const service = await db.collection('listings').findOne({ slug: slug, listingType: 'service' });
-
-  if (!service) {
+  if (error || !service) {
     return {
       notFound: true,
     };
@@ -83,7 +85,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   return {
     props: {
-      service: JSON.parse(JSON.stringify(service)),
+      service,
     },
   };
 };

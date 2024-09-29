@@ -1,18 +1,10 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { auth } from '@/lib/firebase';
-import { 
-  User as FirebaseUser,
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth';
-import { toast } from 'react-hot-toast';
-import axios from 'axios';
+// contexts/AuthContext.tsx
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { supabase } from '../lib/supabase';
+import { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
-  user: FirebaseUser | null;
+  user: User | null;
   loading: boolean;
   signup: (email: string, password: string, name: string, phoneNumber: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -21,93 +13,74 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+export const AuthProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const token = await firebaseUser.getIdToken();
-          await axios.post(`/api/users/${firebaseUser.uid}`, {
-            email: firebaseUser.email,
-            name: firebaseUser.displayName,
-            phoneNumber: firebaseUser.phoneNumber
-          }, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-        } catch (error) {
-          console.error('Error updating user in MongoDB:', error);
-        }
-      }
-      setUser(firebaseUser);
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      setLoading(false);
+    };
+
+    fetchSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  async function signup(email: string, password: string, name: string, phoneNumber: string) {
-    try {
-      const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(newUser, { displayName: name });
-      const token = await newUser.getIdToken();
-      await axios.post(`/api/users/${newUser.uid}`, {
-        email,
+
+  const signup = async (email: string, password: string, name: string, phoneNumber: string) => {
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    if (data.user) {
+      await supabase.from('profiles').insert({
+        user_id: data.user.id,
         name,
-        phoneNumber
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
+        phone_number: phoneNumber,
       });
-      setUser(newUser);
-      toast.success('Account created successfully!');
-    } catch (error) {
-      console.error('Signup error:', error);
-      toast.error(`Error creating account: ${error.message}`);
-      throw error;
     }
-  }
+  };
 
-  async function login(email: string, password: string) {
-    try {
-      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
-      setUser(firebaseUser);
-      toast.success('Logged in successfully!');
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Failed to log in. Please check your credentials.');
-      throw error;
-    }
-  }
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  async function logout() {
-    try {
-      await signOut(auth);
-      setUser(null);
-      toast.success('Logged out successfully!');
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast.error('Failed to log out. Please try again.');
-      throw error;
-    }
-  }
+    if (error) throw error;
+  };
 
-  const value = {
-    user,
-    loading,
-    signup,
-    login,
-    logout
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, loading, signup, login, logout }}>
+      {children}
     </AuthContext.Provider>
   );
-}
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

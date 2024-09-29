@@ -1,24 +1,23 @@
-// pages/experiences/[id].tsx
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import clientPromise from '../../lib/mongodb';
-import { ObjectId } from 'mongodb';
-import { ExperienceListing } from '../../components/SingleListingPage';
+import { ExperienceListing } from '@/components/SingleListingPage';
+import { supabase } from '@/lib/supabase';
 import Head from 'next/head';
 
 interface Experience {
-  _id: string;
-  listingType: 'experience';
+  id: string;
+  listing_type: 'experience';
   title: string;
   description: string;
   address: string;
   images: string[];
-  userDetails: {
-    profilePic: string;
+  listing_user_details: {
+    name: string;
     email: string;
-    phone: string;
+    phone_number: string;
+    profile_pic: string | null;
     bio: string;
-    socialMedia: {
+    social_media: {
       website: string;
       facebook: string;
       twitter: string;
@@ -26,21 +25,22 @@ interface Experience {
       youtube: string;
     }
   };
-  experienceCategory: string;
+  experience_category: string;
   duration: string;
-  groupSize: string;
-  experiencePricing: {
+  group_size: string;
+  experience_pricing: {
     adults: string;
     children: string;
     teens: string;
     groups: string;
     families: string;
   };
-  priceCurrency: string;
+  price_currency: string;
   included: string;
-  bookingEnabled: boolean;
-  videoLink: string;
+  booking_enabled: boolean;
+  video_link: string;
   slug: string;
+  location: [number, number];
 }
 
 interface ExperiencePageProps {
@@ -72,12 +72,14 @@ export default function ExperiencePage({ experience }: ExperiencePageProps) {
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const { slug } = context.params as { slug: string };
 
-  const client = await clientPromise;
-  const db = client.db();
+  const { data: experience, error } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('slug', slug)
+    .eq('listing_type', 'experience')
+    .single();
 
-  const experience = await db.collection('listings').findOne({ slug: slug, listingType: 'experience' });
-
-  if (!experience) {
+  if (error || !experience) {
     return {
       notFound: true,
     };
@@ -85,7 +87,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 
   return {
     props: {
-      experience: JSON.parse(JSON.stringify(experience)),
+      experience,
     },
   };
 };

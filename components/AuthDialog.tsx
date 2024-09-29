@@ -102,7 +102,8 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
       await signup(email, password, name, phoneNumber);
       onClose();
     } catch (error) {
-      toast.error('Error creating account. Please try again.');
+      console.error('Signup error:', error);
+      toast.error(`Error creating account: ${error.message}`);
     } finally {
       setIsLoading(false);
     }

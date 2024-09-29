@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
-import { Select, SelectTrigger, SelectValue, SelectItem, SelectContent } from './ui/select';
-import { Card, CardHeader, CardTitle, CardContent  } from './ui/card';
-import { Input } from './ui/input';
-import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
-import { Label } from './ui/label';
-import { Switch } from './ui/switch';
+import { Select, SelectTrigger, SelectValue, SelectItem, SelectContent } from '@/components/ui/select';
+import { Card, CardHeader, CardTitle, CardContent  } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/lib/supabase';
 
 

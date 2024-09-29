@@ -16,6 +16,7 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+
 const MapEvents = ({ setLocation }) => {
   useMapEvents({
     click(e) {
