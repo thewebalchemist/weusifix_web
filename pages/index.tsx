@@ -13,25 +13,23 @@ import HomepageSections from '@/components/HomepageSections';
 import { supabase } from '@/lib/supabase';
 
 interface Listing {
-  _id: string;
+  id: string;
   listing_type: 'service' | 'event' | 'stay' | 'experience';
-  type: 'service' | 'event' | 'stay' | 'experience';
-  listingType: 'service' | 'event' | 'stay' | 'experience';
   title: string;
   description: string;
   location: string;
-  userDetails: {
+  listing_user_details: {
     profilePic: string;
     email: string;
   };
-  serviceCategory: string;
-  isIndividual: boolean;
+  category: string;
+  is_individual: boolean;
   address: string;
   price: number;
   images: string[];
   amenities?: string[];
-  date?: string;
-  time?: string;
+  event_date?: string;
+  event_time?: string;
   capacity?: number;
   duration?: string;
   slug: string;
@@ -92,7 +90,6 @@ const HomePage: React.FC = () => {
       console.error('Error fetching listings:', error);
     }
   };
-
 
   const fetchPopularServices = async () => {
     try {
@@ -235,7 +232,7 @@ const HomePage: React.FC = () => {
     switch (listing.listing_type) {
       case 'service':
         return (
-          <Link href={listingUrl} key={listing._id}>
+          <Link href={listingUrl} key={listing.id}>
             <div className="relative rounded-2xl bg-white dark:bg-gray-800 cursor-pointer">
               <div className="p-2">
                 <div className="relative">
@@ -245,14 +242,14 @@ const HomePage: React.FC = () => {
                     Verified
                   </span>
                   <span className="absolute flex gap-1 items-center justify-between bottom-2 left-2 bg-blue-100 text-primary text-sm font-semibold px-3 py-1 rounded-full">
-                    {listing.serviceCategory}
+                    {listing.category}
                   </span>
                 </div>
               </div>
               <div className="p-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="px-3 py-1 rounded-full text-sm text-primary bg-green-100">
-                    {listing.isIndividual ? 'Individual' : 'Business'}
+                    {listing.is_individual ? 'Individual' : 'Business'}
                   </span>
                 </div>
                 <h2 className='text-lg font-semibold text-gray-800 dark:text-white mb-1'>{listing.title.substring(0, 25)}</h2>
@@ -273,7 +270,7 @@ const HomePage: React.FC = () => {
         );
       case 'stay':
         return (
-          <Link href={listingUrl} key={listing._id}>
+          <Link href={listingUrl} key={listing.id}>
             <div className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" >
               <div className="p-2">
                 <div className="relative">
@@ -287,7 +284,7 @@ const HomePage: React.FC = () => {
               <div className="py-4 px-2 flex flex-col justify-between">
                 <div className=" flex justify-between items-center py-2">
                   <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
-                    Stay
+                    {listing.category}
                   </span>
                   <span className='text-sm text-gray-600 dark:text-gray-300'>
                     <span className='font-bold'>${listing.price}/</span> night
@@ -297,32 +294,6 @@ const HomePage: React.FC = () => {
                   <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
                   <p className='text-gray-500 dark:text-gray-500'>{listing.address}</p>
                 </div>
-                {/* <div className="grid grid-cols-2 items-center py-2 text-gray-800 dark:text-gray-300">
-                  <div className="border-r border-b border-gray-300 dark:border-gray-600 pr-2">
-                    <span className='p-2 text-xs flex items-center gap-1'>
-                      <UsersRound className='h-3.5 w-3.5 text-primary' />
-                      {listing.amenities?.length} guests
-                    </span>
-                  </div>
-                  <div className="border-b border-gray-300 dark:border-gray-600 pl-2">
-                    <span className='p-2 text-xs flex items-center gap-1'>
-                      <BedDouble className='h-3.5 w-3.5 text-primary' />
-                      {listing.amenities?.includes('Fully Equipped Kitchen') ? '1 kitchen' : 'No kitchen'}
-                    </span>
-                  </div>
-                  <div className="border-r border-gray-300 dark:border-gray-600 pr-2">
-                    <span className='p-2 text-xs flex items-center gap-1'>
-                      <ShowerHead className='h-3.5 w-3.5 text-primary' />
-                      {listing.amenities?.includes('Pool') ? '1 pool' : 'No pool'}
-                    </span>
-                  </div>
-                  <div className="pl-2">
-                    <span className='p-2 text-xs flex items-center gap-1'>
-                      <Bed className='h-3.5 w-3.5 text-primary' />
-                      {listing.amenities?.length} amenities
-                    </span>
-                  </div>
-                </div> */}
               </div>
               <div className="p-2">
                 <div className='flex justify-between space-x-4'>
@@ -335,7 +306,7 @@ const HomePage: React.FC = () => {
         );
       case 'event':
         return (
-          <Link href={listingUrl} key={listing._id}>
+          <Link href={listingUrl} key={listing.id}>
             <div className="relative rounded-2xl border border-gray-300 dark:border-gray-700 cursor-pointer" >
               <div className="p-2">
                 <div className="relative">
@@ -349,12 +320,12 @@ const HomePage: React.FC = () => {
               <div className="py-4 px-2 flex flex-col justify-between">
                 <div className="flex justify-between items-center py-2">
                   <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100">
-                    Event
+                    {listing.category}
                   </span>
                 </div>
                 <div>
                   <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
-                  <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.location}</p>
+                  <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.address}</p>
                   <span className='text-sm text-gray-800 dark:text-gray-100'>
                     From
                     <span className='font-bold'> ${listing.price}/</span> ticket
@@ -362,7 +333,7 @@ const HomePage: React.FC = () => {
                 </div>
               </div>
               <div className="mx-2 px-3 py-2 text-center text-md text-white rounded-xl bg-red-400">
-                {timeLeft}
+                {listing.event_date && new Date(listing.event_date) > new Date() ? 'Coming Soon' : 'Event Passed'}
               </div>
               <div className="p-2">
                 <div className='flex justify-between space-x-4'>
@@ -375,8 +346,8 @@ const HomePage: React.FC = () => {
         );
       case 'experience':
         return (
-          <Link href={listingUrl} key={listing._id}>
-            <div key={listing._id} className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" >
+          <Link href={listingUrl} key={listing.id}>
+            <div className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" >
               <div className="absolute inset-0">
                 <img
                   src={listing.images[0]}
@@ -387,14 +358,14 @@ const HomePage: React.FC = () => {
               <div className="absolute top-0 left-0 right-0 p-4 ">
                 <div className="flex justify-between items-center">
                   <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100 bg-opacity-80">
-                    Experience
+                    {listing.category}
                   </span>
                   <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-700 bg-opacity-80'><Heart className='h-4 w-4' /></span>
                 </div>
               </div>
               <div className="absolute bottom-0 left-0 right-0 bg-gray-600 bg-opacity-80 p-4 rounded-b-2xl">
                 <h2 className="text-white text-lg font-semibold mb-1">{listing.title}</h2>
-                <p className="mb-2 text-gray-200 text-sm">{listing.location}</p>
+                <p className="mb-2 text-gray-200 text-sm">{listing.address}</p>
                 <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
                   <span className="font-bold">${listing.price}/</span> person
                 </span>
@@ -449,19 +420,16 @@ const HomePage: React.FC = () => {
           </div>
 
           <div className="justify-center pt-5">
-          <h1 className="text-center py-5 text-4xl lg:text-6xl font-semibold text-gray-900 dark:text-white">
-              The <span className='text-primary italic underline'>#1</span> platform you can trust
-            </h1>
 
             <div className='flex justify-center py-2 lg:py-5 px-1'>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-5">
               {categories.map((category) => {
                 const ListingIcon = category.icon;
                 return (
                   <button
                     key={category.name}
                     onClick={() => setActiveTab(category.name)}
-                    className={`flex flex-col items-center justify-center cursor-pointer px-2 py-3 rounded-2xl transition-all ${
+                    className={`flex flex-col items-center justify-center cursor-pointer px-2 lg:px-6 py-3 rounded-2xl transition-all ${
                       activeTab === category.name
                         ? 'bg-primary cursor-pointer text-white shadow-lg transform scale-105'
                         : ' bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -469,8 +437,8 @@ const HomePage: React.FC = () => {
                   >
                     <div className='flex flex-row items-between gap-3 lg:gap-5'>
                     <div  className='flex flex-col items-start'>
-                    <span className="font-medium text-xs md:text-lg">{category.name}</span>
-                    <span className="text-xs md:text-sm opacity-75">{category.count} listings</span>
+                    <span className="font-medium text-md md:text-lg">{category.name}</span>
+                    <span className="text-sm opacity-75">{category.count} listings</span>
                     </div>
                     <div className=''>
                     <ChevronRight />
@@ -514,6 +482,8 @@ const HomePage: React.FC = () => {
             opts={{
               align: "start",
               loop: true,
+              slidesToScroll: 1,
+              containScroll: "trimSnaps",
             }}
 
             plugins={[
@@ -522,16 +492,16 @@ const HomePage: React.FC = () => {
               }),
             ]}
             
-            className='mt-6 overflow-hidden'>
-              <CarouselContent>
+            className='mt-6 overflow-hidden relative'>
+              <CarouselContent className="-ml-2 md:-ml-4">
                 {listings.map((listing) => (
-                  <CarouselItem key={listing._id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                  <CarouselItem key={listing._id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
                     {renderCard(listing)}
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <CarouselPrevious className="absolute left-[-50px] top-1/2 -translate-y-1/2 fill-black" />
-          <CarouselNext className="absolute right-[-50px] top-1/2 -translate-y-1/2 fill-black" />
+              <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+            <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
             </Carousel>
           </div>
 
@@ -542,11 +512,13 @@ const HomePage: React.FC = () => {
             opts={{
               align: "start",
               loop: true,
+              slidesToScroll: 1,
+              containScroll: "trimSnaps",
             }}
 
             plugins={[
               Autoplay({
-                delay: 2000,
+                delay: 5000,
               }),
             ]}
             
@@ -558,8 +530,8 @@ const HomePage: React.FC = () => {
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <CarouselPrevious />
-              <CarouselNext />
+              <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+            <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
             </Carousel>
           </section>
 

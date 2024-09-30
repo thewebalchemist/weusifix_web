@@ -99,21 +99,17 @@ const AddListingForm = () => {
       }
     },
     priceCurrency: 'KES',
-    // Service-specific fields
-    serviceCategory: '',
-    // Event-specific fields
+    category: '',
+    isIndividual: true,
     eventDate: null,
     eventTime: null,
     capacity: '',
     eventPricing: [],
-    // Stay-specific fields
     checkInTime: null,
     checkOutTime: null,
     stayAvailability: [],
     amenities: [],
     stayPrice: '',
-    // Experience-specific fields
-    experienceCategory: '',
     duration: '',
     included: '',
     groupSize: '',
@@ -282,9 +278,9 @@ const AddListingForm = () => {
       );
   
       const slug = await createUniqueSlug(formData.title, listingType);
-  
-      // Prepare common listing data
-      const commonListingData = {
+
+      // Prepare listing data
+      const listingData = {
         user_id: user.id,
         listing_type: listingType,
         title: formData.title,
@@ -299,68 +295,43 @@ const AddListingForm = () => {
         opening_hours: formData.openingHours,
         availability: formData.availability,
         listing_user_details: formData.listingUserDetails,
-        slug: slug
+        slug: slug,
+        category: formData.category,
+        is_individual: listingType === 'service' ? isIndividual : null,
+        event_date: listingType === 'event' ? formData.eventDate : null,
+        event_time: listingType === 'event' ? formData.eventTime : null,
+        capacity: listingType === 'event' ? formData.capacity : null,
+        event_pricing: listingType === 'event' ? formData.eventPricing : null,
+        check_in_time: listingType === 'stay' ? formData.checkInTime : null,
+        check_out_time: listingType === 'stay' ? formData.checkOutTime : null,
+        stay_price: listingType === 'stay' ? formData.stayPrice : null,
+        amenities: listingType === 'stay' ? formData.amenities : null,
+        stay_availability: listingType === 'stay' ? formData.stayAvailability : null,
+        duration: listingType === 'experience' ? formData.duration : null,
+        included: listingType === 'experience' ? formData.included : null,
+        group_size: listingType === 'experience' ? formData.groupSize : null,
+        experience_pricing: listingType === 'experience' ? formData.experiencePricing : null,
       };
-  
+
       // Insert the new listing
       const { data: newListing, error: listingError } = await supabase
         .from('listings')
-        .insert(commonListingData)
+        .insert(listingData)
         .select()
         .single();
-  
+
       if (listingError) throw listingError;
-  
-      // Insert type-specific details
-      switch(listingType) {
-        case 'service':
-          await supabase.from('service_listings').insert({
-            listing_id: newListing.id,
-            service_category: formData.serviceCategory,
-            is_individual: isIndividual
-          });
-          break;
-        case 'event':
-          await supabase.from('event_listings').insert({
-            listing_id: newListing.id,
-            event_date: formData.eventDate,
-            event_time: formData.eventTime,
-            capacity: formData.capacity,
-            event_pricing: formData.eventPricing
-          });
-          break;
-        case 'stay':
-          await supabase.from('stay_listings').insert({
-            listing_id: newListing.id,
-            check_in_time: formData.checkInTime,
-            check_out_time: formData.checkOutTime,
-            stay_price: formData.stayPrice,
-            amenities: formData.amenities,
-            stay_availability: formData.stayAvailability
-          });
-          break;
-        case 'experience':
-          await supabase.from('experience_listings').insert({
-            listing_id: newListing.id,
-            experience_category: formData.experienceCategory,
-            duration: formData.duration,
-            included: formData.included,
-            group_size: formData.groupSize,
-            experience_pricing: formData.experiencePricing
-          });
-          break;
-      }
-  
+
       // Update user's hasListings flag
       if (isFirstTimeListing) {
         const { error: profileError } = await supabase
           .from('profiles')
           .update({ has_listings: true })
           .eq('user_id', user.id);
-  
+
         if (profileError) throw profileError;
       }
-  
+
       toast.success('Listing added successfully!');
       router.push('/dashboard');
     } catch (error) {
@@ -479,19 +450,20 @@ const AddListingForm = () => {
           value={formData.videoLink}
           onChange={handleInputChange}
         />
-        {listingType === 'service' && (
-          <div>
-            <Label>Service Category</Label>
-            <Select 
-              name="serviceCategory" 
-              value={formData.serviceCategory}
-              onValueChange={(value) => handleInputChange({ target: { name: 'serviceCategory', value } })}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
+        <div>
+          <Label>Category</Label>
+          <Select 
+            name="category" 
+            value={formData.category}
+            onValueChange={(value) => handleInputChange({ target: { name: 'category', value } })}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a category" />
+            </SelectTrigger>
+            <SelectContent>
+              {listingType === 'service' && (
+                <>
               <SelectItem value="AC Repair">AC Repair</SelectItem>
               <SelectItem value="Appliance Repair">Appliance Repair</SelectItem>
               <SelectItem value="Auto Detailer">Auto Detailer</SelectItem>
@@ -547,10 +519,38 @@ const AddListingForm = () => {
               <SelectItem value="Warehouse Worker">Warehouse Worker</SelectItem>
               <SelectItem value="Welder">Welder</SelectItem>
               <SelectItem value="Window Tinting">Window Tinting</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+              </>
+              )}
+              {listingType === 'event' && (
+                <>
+                  <SelectItem value="conferences">Conferences</SelectItem>
+                  <SelectItem value="concerts">Concerts</SelectItem>
+                  <SelectItem value="workshops">Workshops</SelectItem>
+                  <SelectItem value="parties">Parties</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </>
+              )}
+              {listingType === 'stay' && (
+                <>
+                  <SelectItem value="hotels">Hotels</SelectItem>
+                  <SelectItem value="apartments">Apartments</SelectItem>
+                  <SelectItem value="resorts">Resorts</SelectItem>
+                  <SelectItem value="villas">Villas</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </>
+              )}
+              {listingType === 'experience' && (
+                <>
+                  <SelectItem value="cityTours">City Tours</SelectItem>
+                  <SelectItem value="adventures">Adventures</SelectItem>
+                  <SelectItem value="culinaryExperiences">Culinary Experiences</SelectItem>
+                  <SelectItem value="wellness">Wellness</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
         {listingType === 'stay' && (
           <div className="space-y-2">
             <Label>Price per night</Label>
@@ -999,7 +999,7 @@ const AddListingForm = () => {
         <CardTitle>Stay Details</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex space-x-4">
+        <div className="flex flex-wrap gap-4">
           <div>
             <Label>Check-in Time</Label>
             <TimePicker
@@ -1017,7 +1017,7 @@ const AddListingForm = () => {
         </div>
         <div>
           <Label>Amenities</Label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 text-xs md:text-sm">
             {[
               'Wi-Fi', 'Kitchen', 'Parking', 'Pool', 'Air Conditioning', 'Heating',
               'TV', 'Washer', 'Dryer', 'Iron', 'Workspace', 'Hot Tub',
