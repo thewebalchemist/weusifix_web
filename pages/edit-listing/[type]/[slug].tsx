@@ -129,7 +129,7 @@ const EditListingForm = () => {
 
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="py-28 lg:py-32 mx-auto lg:max-w-5xl p-4">
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>

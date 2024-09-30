@@ -1,3 +1,5 @@
+// pages/events/[slug].tsx
+
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { EventListing } from '@/components/SingleListingPage';
@@ -14,10 +16,10 @@ interface Event {
   listing_user_details: {
     name: string;
     email: string;
-    phone_number: string;
-    profile_pic: string | null;
+    phoneNumber: string;
+    profilePic: string | null;
     bio: string;
-    social_media: {
+    socialMedia: {
       website: string;
       facebook: string;
       twitter: string;
@@ -27,13 +29,14 @@ interface Event {
   };
   event_date: string;
   event_time: string;
-  capacity: string;
-  event_pricing: Array<{ type: string; price: string }>;
+  capacity: number; // Changed to number
+  event_pricing: Array<{ type: string; price: number }>; // Changed price to number
   price_currency: string;
   booking_enabled: boolean;
   video_link: string;
   slug: string;
-  location: [number, number];
+  location: string; // Assuming it's stored as a string in the format "(lat,lng)"
+  category: string; // Added category field
 }
 
 interface EventPageProps {
@@ -76,6 +79,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     return {
       notFound: true,
     };
+  }
+
+  // Parse the location string into an array of numbers
+  if (event.location) {
+    event.location = event.location.replace(/[()]/g, '').split(',').map(Number);
   }
 
   return {

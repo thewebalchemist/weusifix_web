@@ -3,7 +3,7 @@ import Navigation from '@/components/Navigation';
 import AuthDialog from '@/components/AuthDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/router';
-import { toast } from 'react-hot-toast';
+import Footer from '@/components/FooterComponent';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,26 +14,31 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user } = useAuth();
   const router = useRouter();
 
-  const handleAddListingClick = () => {
-    if (!user) {
-      setIsAuthDialogOpen(true);
-    } else if (user.role !== 'provider') {
-      toast.error('Only service providers can add listings.');
-    } else {
+  const handleCreateClick = () => {
+    if (user) {
       router.push('/add-listing');
+    } else {
+      setIsAuthDialogOpen(true);
     }
   };
 
+  const handleAuthSuccess = () => {
+    setIsAuthDialogOpen(false);
+    router.push('/add-listing');
+  };
+
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-stone-100 dark:bg-gray-900">
       <Navigation 
-        setIsAuthDialogOpen={setIsAuthDialogOpen} 
-        onAddListingClick={handleAddListingClick}
+        setIsAuthDialogOpen={setIsAuthDialogOpen}
+        onCreateClick={handleCreateClick}
       />
-      <main>{children}</main>
+      <main className="flex-grow">{children}</main>
+      <Footer />
       <AuthDialog 
         isOpen={isAuthDialogOpen} 
         onClose={() => setIsAuthDialogOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
       />
     </div>
   );

@@ -1,3 +1,5 @@
+// pages/experiences/[slug].tsx
+
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { ExperienceListing } from '@/components/SingleListingPage';
@@ -14,10 +16,10 @@ interface Experience {
   listing_user_details: {
     name: string;
     email: string;
-    phone_number: string;
-    profile_pic: string | null;
+    phoneNumber: string;
+    profilePic: string | null;
     bio: string;
-    social_media: {
+    socialMedia: {
       website: string;
       facebook: string;
       twitter: string;
@@ -25,22 +27,22 @@ interface Experience {
       youtube: string;
     }
   };
-  experience_category: string;
+  category: string; // Changed from experience_category
   duration: string;
-  group_size: string;
+  group_size: number; // Changed to number
   experience_pricing: {
-    adults: string;
-    children: string;
-    teens: string;
-    groups: string;
-    families: string;
+    adults: number;
+    children: number;
+    teens: number;
+    groups: number;
+    families: number;
   };
   price_currency: string;
   included: string;
   booking_enabled: boolean;
   video_link: string;
   slug: string;
-  location: [number, number];
+  location: string; // Assuming it's stored as a string in the format "(lat,lng)"
 }
 
 interface ExperiencePageProps {
@@ -83,6 +85,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     return {
       notFound: true,
     };
+  }
+
+  // Parse the location string into an array of numbers
+  if (experience.location) {
+    experience.location = experience.location.replace(/[()]/g, '').split(',').map(Number);
   }
 
   return {

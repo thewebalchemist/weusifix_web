@@ -13,14 +13,12 @@ import {
 } from './ui/dropdown-menu';
 import Image from 'next/image';
 
-
 interface NavigationProps {
   setIsAuthDialogOpen: (isOpen: boolean) => void;
-  onAddListingClick: () => void;
+  onCreateClick: () => void;
 }
 
-
-const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onAddListingClick }) => {
+const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onCreateClick }) => {
   const { user, logout } = useAuth();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
@@ -112,27 +110,26 @@ const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onAddListi
 
           {/* Right: Add Listing Button, Theme Toggle, and Profile */}
           <div className="flex items-center space-x-2 lg:space-x-4">
-            <Button
-              className=" inline-flex h-9 lg:h-11 text-sm text-white bg-primary hover:text-gray-200 border-primary hover:bg-primary/70 px-2 py-1 md:px-5 md:py-3"
-              onClick={() => router.push('/add-listing')}
-              variant="outline"
-            >
-              
-              Create
-              <CirclePlus className='ml-2 w-4 h-4 lg:w-5 lg:h-5' />
-            </Button>
-            
-            {user ? (
-              renderProfileMenu()
-            ) : (
-              <Button
-                onClick={() => setIsAuthDialogOpen(true)}
-                variant="ghost"
-                className="hidden md:inline-flex text-gray-800 dark:text-gray-300"
-              >
-                Log In
-              </Button>
-            )}
+          <Button
+          className="inline-flex h-9 lg:h-11 text-sm text-white bg-primary hover:text-gray-200 border-primary hover:bg-primary/70 px-2 py-1 md:px-5 md:py-3"
+          onClick={onCreateClick}
+          variant="outline"
+        >
+          Create
+          <CirclePlus className='ml-2 w-4 h-4 lg:w-5 lg:h-5' />
+        </Button>
+        
+        {user ? (
+          renderProfileMenu()
+        ) : (
+          <Button
+            onClick={() => setIsAuthDialogOpen(true)}
+            variant="ghost"
+            className="hidden md:inline-flex text-gray-800 dark:text-gray-300"
+          >
+            Log In
+          </Button>
+        )}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -173,7 +170,7 @@ const Navigation: React.FC<NavigationProps> = ({ setIsAuthDialogOpen, onAddListi
                       Experiences
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={onAddListingClick}>
+                  <DropdownMenuItem onSelect={onCreateClick}>
                     Add Listing
                   </DropdownMenuItem>
                 </DropdownMenuContent>

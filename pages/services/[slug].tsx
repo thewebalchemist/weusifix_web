@@ -1,3 +1,5 @@
+// pages/services/[slug].tsx
+
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { ServiceListing } from '@/components/SingleListingPage';
@@ -14,10 +16,10 @@ interface Service {
   listing_user_details: {
     name: string;
     email: string;
-    phone_number: string;
-    profile_pic: string | null;
+    phoneNumber: string;
+    profilePic: string | null;
     bio: string;
-    social_media: {
+    socialMedia: {
       website: string;
       facebook: string;
       twitter: string;
@@ -25,7 +27,7 @@ interface Service {
       youtube: string;
     }
   };
-  service_category: string;
+  category: string; // Changed from service_category
   is_individual: boolean;
   opening_hours: {
     enabled: boolean;
@@ -38,7 +40,7 @@ interface Service {
   booking_enabled: boolean;
   video_link: string;
   slug: string;
-  location: [number, number];
+  location: string; // Assuming it's stored as a string in the format "(lat,lng)"
 }
 
 interface ServicePageProps {
@@ -81,6 +83,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     return {
       notFound: true,
     };
+  }
+
+  // Parse the location string into an array of numbers
+  if (service.location) {
+    service.location = service.location.replace(/[()]/g, '').split(',').map(Number);
   }
 
   return {

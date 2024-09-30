@@ -11,9 +11,10 @@ import { useAuth } from '../contexts/AuthContext';
 interface AuthDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onAuthSuccess: () => void;
 }
 
-const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
+const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose, onAuthSuccess }) => {
   const { signup, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -80,7 +81,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
     setIsLoading(true);
     try {
       await login(email, password);
-      onClose();
+      onAuthSuccess();
     } catch (error) {
       toast.error('Failed to log in. Please check your credentials.');
     } finally {
@@ -100,7 +101,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
     setIsLoading(true);
     try {
       await signup(email, password, name, phoneNumber);
-      onClose();
+      onAuthSuccess();
     } catch (error) {
       toast.error(`Error creating account: ${error.message}`);
     } finally {

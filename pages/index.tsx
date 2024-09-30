@@ -26,6 +26,9 @@ interface Listing {
   is_individual: boolean;
   address: string;
   price: number;
+  stay_price: number;
+  event_pricing: number;
+  experience_pricing: number;
   images: string[];
   amenities?: string[];
   event_date?: string;
@@ -287,11 +290,11 @@ const HomePage: React.FC = () => {
                     {listing.category}
                   </span>
                   <span className='text-sm text-gray-600 dark:text-gray-300'>
-                    <span className='font-bold'>${listing.price}/</span> night
+                    <span className='font-bold'>${listing.stay_price}/</span> night
                   </span>
                 </div>
                 <div>
-                  <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
+                  <h2 className='text-gray-800 dark:text-white'>{listing.title.substring(0, 25)}</h2>
                   <p className='text-gray-500 dark:text-gray-500'>{listing.address}</p>
                 </div>
               </div>
@@ -324,11 +327,11 @@ const HomePage: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <h2 className='text-gray-800 dark:text-white'>{listing.title}</h2>
+                  <h2 className='text-gray-800 dark:text-white'>{listing.title.substring(0, 25)}</h2>
                   <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.address}</p>
                   <span className='text-sm text-gray-800 dark:text-gray-100'>
                     From
-                    <span className='font-bold'> ${listing.price}/</span> ticket
+                    <span className='font-bold'> ${listing.event_pricing}/</span> ticket
                   </span>
                 </div>
               </div>
@@ -364,10 +367,10 @@ const HomePage: React.FC = () => {
                 </div>
               </div>
               <div className="absolute bottom-0 left-0 right-0 bg-gray-600 bg-opacity-80 p-4 rounded-b-2xl">
-                <h2 className="text-white text-lg font-semibold mb-1">{listing.title}</h2>
+                <h2 className="text-white text-lg font-semibold mb-1">{listing.title.substring(0, 25)}</h2>
                 <p className="mb-2 text-gray-200 text-sm">{listing.address}</p>
                 <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
-                  <span className="font-bold">${listing.price}/</span> person
+                  <span className="font-bold">${listing.experience_pricing}/</span> person
                 </span>
               </div>
             </div>
@@ -495,7 +498,7 @@ const HomePage: React.FC = () => {
             className='mt-6 overflow-hidden relative'>
               <CarouselContent className="-ml-2 md:-ml-4">
                 {listings.map((listing) => (
-                  <CarouselItem key={listing._id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                  <CarouselItem key={listing.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
                     {renderCard(listing)}
                   </CarouselItem>
                 ))}
@@ -525,7 +528,7 @@ const HomePage: React.FC = () => {
             className='overflow-hidden'>
               <CarouselContent>
                 {popularServices.map((service) => (
-                  <CarouselItem key={service._id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                  <CarouselItem key={service.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
                     {renderCard(service)}
                   </CarouselItem>
                 ))}

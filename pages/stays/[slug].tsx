@@ -1,3 +1,5 @@
+// pages/stays/[slug].tsx
+
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { StayListing } from '@/components/SingleListingPage';
@@ -11,19 +13,19 @@ interface Stay {
   description: string;
   address: string;
   images: string[];
-  stay_price: string;
+  stay_price: number;
   price_currency: string;
   check_in_time: string;
   check_out_time: string;
-  amenities?: string[];
+  amenities: string[];
   stay_availability: Array<{ start: string; end: string }>;
   listing_user_details: {
     name: string;
     email: string;
-    phone_number: string;
-    profile_pic: string | null;
+    phoneNumber: string;
+    profilePic: string | null;
     bio: string;
-    social_media: {
+    socialMedia: {
       website: string;
       facebook: string;
       twitter: string;
@@ -33,7 +35,7 @@ interface Stay {
   };
   booking_enabled: boolean;
   slug: string;
-  location: [number, number];
+  location: string; // Assuming it's stored as a string in the format "(lat,lng)"
 }
 
 interface StayPageProps {
@@ -76,6 +78,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     return {
       notFound: true,
     };
+  }
+
+  // Parse the location string into an array of numbers
+  if (stay.location) {
+    stay.location = stay.location.replace(/[()]/g, '').split(',').map(Number);
   }
 
   return {

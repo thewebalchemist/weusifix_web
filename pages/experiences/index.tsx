@@ -1,3 +1,5 @@
+// pages/experiences/index.tsx
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -16,6 +18,8 @@ interface Experience {
   images: string[];
   price: number;
   slug: string;
+  category: string;
+  experience_pricing: number;
 }
 
 const ExperiencesPage: React.FC = () => {
@@ -68,30 +72,30 @@ const ExperiencesPage: React.FC = () => {
   const renderCard = (listing: Experience) => (
     <Link href={`/experiences/${listing.slug}`} key={listing.id}>
       <div className="relative rounded-2xl overflow-hidden h-80 w-64 cursor-pointer" >
-        <div className="absolute inset-0">
-          <img
-            src={listing.images[0]}
-            alt={listing.title}
-            className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
-          />
-        </div>
-        <div className="absolute top-0 left-0 right-0 p-4 ">
-          <div className="flex justify-between items-center">
-            <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100 bg-opacity-80">
-              Experience
-            </span>
-            <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-700 bg-opacity-80'><Heart className='h-4 w-4' /></span>
-          </div>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 bg-gray-600 bg-opacity-80 p-4 rounded-b-2xl">
-          <h2 className="text-white text-lg font-semibold mb-1">{listing.title}</h2>
-          <p className="mb-2 text-gray-200 text-sm">{listing.location}</p>
-          <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
-            <span className="font-bold">${listing.price}/</span> person
-          </span>
-        </div>
-      </div>
-    </Link>
+              <div className="absolute inset-0">
+                <img
+                  src={listing.images[0]}
+                  alt={listing.title}
+                  className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                />
+              </div>
+              <div className="absolute top-0 left-0 right-0 p-4 ">
+                <div className="flex justify-between items-center">
+                  <span className="px-3 py-1 rounded-full text-sm text-primary bg-blue-100 bg-opacity-80">
+                    {listing.category}
+                  </span>
+                  <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-700 bg-opacity-80'><Heart className='h-4 w-4' /></span>
+                </div>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 bg-gray-600 bg-opacity-80 p-4 rounded-b-2xl">
+                <h2 className="text-white text-lg font-semibold mb-1">{listing.title.substring(0, 25)}</h2>
+                <p className="mb-2 text-gray-200 text-sm">{listing.address}</p>
+                <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
+                  <span className="font-bold">${listing.experience_pricing}/</span> person
+                </span>
+              </div>
+            </div>
+          </Link>
   );
 
   return (

@@ -213,14 +213,14 @@ const EventListing = ({ event }) => {
         <h1 className="text-2xl lg:text-5xl font-bold mb-2 text-gray-800 dark:text-gray-300">{event.title}</h1>
         <div className="flex items-center mb-6 text-gray-600 dark:text-gray-500">
           <MapPin className="w-5 h-5 mr-2" />
-          <span>{event.location}</span>
+          <span>{event.address}</span>
         </div>
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="lg:w-2/3">
             <Tabs defaultValue="description">
               <TabsList className="w-full mb-4 rounded-2xl py-4">
                 <TabsTrigger value="description">Overview</TabsTrigger>
-                <TabsTrigger value="schedule">Schedule</TabsTrigger>
+                <TabsTrigger value="details">Event Details</TabsTrigger>
               </TabsList>
               <TabsContent value="description">
                 <p className="text-gray-800 dark:text-gray-300">{event.description}</p>
@@ -233,13 +233,17 @@ const EventListing = ({ event }) => {
                   </div>
                 )}
               </TabsContent>
-              <TabsContent value="schedule">
-                {event.schedule.map((item, index) => (
-                  <div key={index} className="mb-4 p-5 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-3xl">
-                    <h3 className="font-semibold">{item.time}</h3>
-                    <p>{item.activity}</p>
+              <TabsContent value="details">
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <Clock className="w-5 h-5 mr-2 text-gray-500" />
+                    <span>{event.event_date} at {event.event_time}</span>
                   </div>
-                ))}
+                  <div className="flex items-center">
+                    <Users className="w-5 h-5 mr-2 text-gray-500" />
+                    <span>{event.capacity} attendees</span>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
@@ -313,13 +317,15 @@ const EventListing = ({ event }) => {
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <Clock className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>{event.date} at {event.time}</span>
+                    <span>{event.event_date} at {event.event_time}</span>
                   </div>
                   <div className="flex items-center">
                     <Users className="w-5 h-5 mr-2 text-gray-500" />
                     <span>{event.capacity} attendees</span>
                   </div>
-                  <p className="text-2xl font-bold">${event.price}</p>
+                  {event.event_pricing.map((pricing, index) => (
+                    <p key={index} className="text-2xl font-bold">{event.price_currency} {pricing.price} - {pricing.type}</p>
+                  ))}
                   <Button className="w-full">Buy Tickets</Button>
                 </div>
               </CardContent>
@@ -365,36 +371,36 @@ const StayListing = ({ stay }) => {
                 )}
               </TabsContent>
               <TabsContent value="amenities">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {stay.amenities && stay.amenities.length > 0 ? (
-                  stay.amenities.map((amenity, index) => (
-                    <div key={index} className="flex items-center p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
-                      <span>{amenity}</span>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {stay.amenities && stay.amenities.length > 0 ? (
+                    stay.amenities.map((amenity, index) => (
+                      <div key={index} className="flex items-center p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
+                        <span>{amenity}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-2 md:col-span-3 p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
+                      No amenities listed for this stay.
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-2 md:col-span-3 p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
-                    No amenities listed for this stay.
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            <TabsContent value="availability">
-              <div className="space-y-4">
-                {stay.stayAvailability && stay.stayAvailability.length > 0 ? (
-                  stay.stayAvailability.map((period, index) => (
-                    <div key={index} className="p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
-                      <p>From: {new Date(period.start).toLocaleDateString()}</p>
-                      <p>To: {new Date(period.end).toLocaleDateString()}</p>
+                  )}
+                </div>
+              </TabsContent>
+              <TabsContent value="availability">
+                <div className="space-y-4">
+                  {stay.stay_availability && stay.stay_availability.length > 0 ? (
+                    stay.stay_availability.map((period, index) => (
+                      <div key={index} className="p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
+                        <p>From: {new Date(period.start).toLocaleDateString()}</p>
+                        <p>To: {new Date(period.end).toLocaleDateString()}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
+                      No availability information provided for this stay.
                     </div>
-                  ))
-                ) : (
-                  <div className="p-3 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-2xl">
-                    No availability information provided for this stay.
-                  </div>
-                )}
-              </div>
-            </TabsContent>
+                  )}
+                </div>
+              </TabsContent>
             </Tabs>
           </div>
           <div className="lg:w-1/3">
@@ -464,7 +470,7 @@ const StayListing = ({ stay }) => {
                 <CardTitle>Book this Stay</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold mb-4">{stay.priceCurrency} {stay.stay_price} / night</p>
+                <p className="text-2xl font-bold mb-4">{stay.price_currency} {stay.stay_price} / night</p>
                 <div className="space-y-4">
                   <div className='space-y-4'>
                     <label className="block text-lg font-medium text-gray-700 dark:text-gray-300">Check-in</label>
@@ -485,8 +491,8 @@ const StayListing = ({ stay }) => {
                     />
                   </div>
                 </div>
-                <Button className="w-full mt-4" disabled={!stay.bookingEnabled}>
-                  {stay.bookingEnabled ? 'Book Now' : 'Booking Unavailable'}
+                <Button className="w-full mt-4" disabled={!stay.booking_enabled}>
+                  {stay.booking_enabled ? 'Book Now' : 'Booking Unavailable'}
                 </Button>
               </CardContent>
             </Card>
@@ -578,23 +584,23 @@ const ExperienceListing = ({ experience }) => {
                     <AvatarFallback><User /></AvatarFallback>
                   </Avatar>
                   <div>
-                  <h3 className="text-lg font-semibold">{experience.listing_user_details.name}</h3>
+                    <h3 className="text-lg font-semibold">{experience.listing_user_details.name}</h3>
                     <h3 className="text-lg font-semibold">{experience.listing_user_details.email}</h3>
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 mb-4">{experience.listing_user_details.bio}</p>
-                <div className="flex space-x-2 mb-4"><Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => window.location.href = `tel:${experience.listing_user_details.email}`}
-                  >
-                    <PhoneCall className="mr-2 h-4 w-4" /> Call
-                  </Button>
-
+                <div className="flex space-x-2 mb-4">
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `mailto:${experience.listing_user_details.phone}`}
+                    onClick={() => window.location.href = `tel:${experience.listing_user_details.phoneNumber}`}
+                  >
+                    <PhoneCall className="mr-2 h-4 w-4" /> Call
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = `mailto:${experience.listing_user_details.email}`}
                   >
                     <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
@@ -624,12 +630,11 @@ const ExperienceListing = ({ experience }) => {
                 <CardTitle>Book this Experience</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold mb-4">${experience.price} / person</p>
                 <div className="space-y-4">
-                <div className='border border-gray-500 p-3 rounded-2xl'>
+                  <div className='border border-gray-500 p-3 rounded-2xl'>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Group Size</label>
                     <select className="mt-1 p-2 block w-full rounded-xl border border-gray-500 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                      {[...Array(experience.maxGroupSize)].map((_, i) => (
+                      {[...Array(parseInt(experience.group_size))].map((_, i) => (
                         <option key={i} value={i + 1}>{i + 1} {i === 0 ? 'person' : 'people'}</option>
                       ))}
                     </select>
@@ -643,9 +648,10 @@ const ExperienceListing = ({ experience }) => {
                       className="rounded-3xl border border-gray-300 dark:border-gray-700"
                     />
                   </div>
-                  
                 </div>
-                <Button className="w-full mt-4">Book Now</Button>
+                <Button className="w-full mt-4" disabled={!experience.booking_enabled}>
+                  {experience.booking_enabled ? 'Book Now' : 'Booking Unavailable'}
+                </Button>
               </CardContent>
             </Card>
             <Card className="mt-6">
@@ -660,20 +666,19 @@ const ExperienceListing = ({ experience }) => {
                   </div>
                   <div className="flex items-center">
                     <Users className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>Max Group Size: {experience.maxGroupSize} people</span>
+                    <span>Max Group Size: {experience.group_size} people</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-2">What's Included:</h3>
+                    <h3 className="font-semibold mb-2">Pricing:</h3>
                     <ul className="list-disc list-inside">
-                      {experience.included.map((item, index) => (
-                        <li key={index}>{item}</li>
+                      {Object.entries(experience.experience_pricing).map(([type, price]) => (
+                        <li key={type}>{type}: {experience.price_currency} {price}</li>
                       ))}
                     </ul>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            
           </div>
         </div>
       </div>
