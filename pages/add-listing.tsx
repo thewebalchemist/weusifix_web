@@ -473,6 +473,7 @@ const AddListingForm = () => {
               <SelectItem value="Builder">Builder</SelectItem>
               <SelectItem value="Car Wash">Car Wash</SelectItem>
               <SelectItem value="Carpenter">Carpenter</SelectItem>
+              <SelectItem value="Carpenter">Cartering</SelectItem>
               <SelectItem value="Computer Repair">Computer Repair</SelectItem>
               <SelectItem value="Contractors">Contractors</SelectItem>
               <SelectItem value="Cook">Cook</SelectItem>
