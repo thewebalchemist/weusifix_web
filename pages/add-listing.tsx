@@ -483,6 +483,7 @@ const AddListingForm = () => {
               <SelectItem value="Electrician">Electrician</SelectItem>
               <SelectItem value="Furniture Repair">Furniture Repair</SelectItem>
               <SelectItem value="Gardener">Gardener</SelectItem>
+              <SelectItem value="Gas Refill">Gas Refill</SelectItem>
               <SelectItem value="Graphic Designer">Graphic Designer</SelectItem>
               <SelectItem value="Gym">Gym</SelectItem>
               <SelectItem value="Hair Stylist">Hair Stylist</SelectItem>
@@ -519,6 +520,7 @@ const AddListingForm = () => {
               <SelectItem value="Tutor">Tutor</SelectItem>
               <SelectItem value="TV Repair">TV Repair</SelectItem>
               <SelectItem value="Warehouse Worker">Warehouse Worker</SelectItem>
+              <SelectItem value="water Delivery">water Delivery</SelectItem>
               <SelectItem value="Welder">Welder</SelectItem>
               <SelectItem value="Window Tinting">Window Tinting</SelectItem>
               </>
