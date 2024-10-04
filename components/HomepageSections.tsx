@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AlertCircle, Star } from 'lucide-react';
 
 const popularCities = [
   "Nairobi", "Nakuru", "Mombasa", "Kisumu", "Eldoret", "Nyeri", "Thika", "Isiolo", "Meru", "Malindi",
@@ -29,6 +30,8 @@ const professionalsForHire = [
 const HomepageSections: React.FC = () => {
   return (
     <div className="container mx-auto px-2 lg:px-4 py-8">
+      
+      
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Popular Cities</CardTitle>

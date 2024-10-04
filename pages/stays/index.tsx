@@ -16,7 +16,7 @@ interface Stay {
   location: string;
   address: string;
   images: string[];
-  price: number;
+  price_currency: string;
   amenities?: string[];
   slug: string;
   category: string;
@@ -96,7 +96,7 @@ const StaysPage: React.FC = () => {
                     {listing.category}
                   </span>
                   <span className='text-sm text-gray-600 dark:text-gray-300'>
-                    <span className='font-bold'>${listing.stay_price}/</span> night
+                    <span className='font-bold'>{listing.price_currency} {listing.stay_price}/</span> night
                   </span>
                 </div>
                 <div>

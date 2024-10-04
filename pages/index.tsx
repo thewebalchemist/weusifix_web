@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { Search, ChevronRight, BadgeCheck, Heart, UsersRound, BedDouble, Bed, ShowerHead, MapPin } from 'lucide-react';
+import { Search, ChevronRight, BadgeCheck, Heart, UsersRound, BedDouble, Bed, ShowerHead, MapPin, Star, AlertCircle, Coffee, Sunrise, Zap, Briefcase } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ interface Listing {
   is_individual: boolean;
   address: string;
   price: number;
+  price_currency: string;
   stay_price: number;
   event_pricing: number;
   experience_pricing: number;
@@ -70,6 +71,8 @@ const HomePage: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState('');
   const [listings, setListings] = useState<Listing[]>([]);
   const [popularServices, setPopularServices] = useState<Listing[]>([]);
+  const [businessServices, setBusinessServices] = useState<Listing[]>([]);
+  const [popularStays, setPopularStays] = useState<Listing[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const ITEMS_PER_PAGE = 9;
@@ -77,6 +80,8 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     fetchListings();
     fetchPopularServices();
+    fetchBusinessServices();
+    fetchPopularStays();
   }, [activeTab]);
 
   const fetchListings = async () => {
@@ -91,6 +96,38 @@ const HomePage: React.FC = () => {
       setListings(data || []);
     } catch (error) {
       console.error('Error fetching listings:', error);
+    }
+  };
+
+
+  const fetchBusinessServices = async () => {
+    try {
+      let { data, error } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('listing_type', 'service')
+        .eq('is_individual', false)
+        .limit(10);
+
+      if (error) throw error;
+      setBusinessServices(data || []);
+    } catch (error) {
+      console.error('Error fetching business services:', error);
+    }
+  };
+
+  const fetchPopularStays = async () => {
+    try {
+      let { data, error } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('listing_type', 'stay')
+        .limit(10);
+
+      if (error) throw error;
+      setPopularStays(data || []);
+    } catch (error) {
+      console.error('Error fetching popular stays:', error);
     }
   };
 
@@ -290,7 +327,7 @@ const HomePage: React.FC = () => {
                     {listing.category}
                   </span>
                   <span className='text-sm text-gray-600 dark:text-gray-300'>
-                    <span className='font-bold'>${listing.stay_price}/</span> night
+                    <span className='font-bold'>{listing.price_currency} {listing.stay_price}/</span> night
                   </span>
                 </div>
                 <div>
@@ -331,7 +368,7 @@ const HomePage: React.FC = () => {
                   <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.address}</p>
                   <span className='text-sm text-gray-800 dark:text-gray-100'>
                     From
-                    <span className='font-bold'> ${listing.event_pricing}/</span> ticket
+                    <span className='font-bold'>{listing.price_currency} {listing.event_pricing}/</span> ticket
                   </span>
                 </div>
               </div>
@@ -370,7 +407,7 @@ const HomePage: React.FC = () => {
                 <h2 className="text-white text-lg font-semibold mb-1">{listing.title.substring(0, 25)}</h2>
                 <p className="mb-2 text-gray-200 text-sm">{listing.address}</p>
                 <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
-                  <span className="font-bold">${listing.experience_pricing}/</span> person
+                  <span className="font-bold">{listing.price_currency} {listing.experience_pricing}/</span> person
                 </span>
               </div>
             </div>
@@ -425,77 +462,76 @@ const HomePage: React.FC = () => {
           <div className="justify-center pt-5">
 
             <div className='flex justify-center py-2 lg:py-5 px-1'>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-5">
-              {categories.map((category) => {
-                const ListingIcon = category.icon;
-                return (
-                  <button
-                    key={category.name}
-                    onClick={() => setActiveTab(category.name)}
-                    className={`flex flex-col items-center justify-center cursor-pointer px-2 lg:px-6 py-3 rounded-2xl transition-all ${
-                      activeTab === category.name
-                        ? 'bg-primary cursor-pointer text-white shadow-lg transform scale-105'
-                        : ' bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <div className='flex flex-row items-between gap-3 lg:gap-5'>
-                    <div  className='flex flex-col items-start'>
-                    <span className="font-medium text-md md:text-lg">{category.name}</span>
-                    <span className="text-sm opacity-75">{category.count} listings</span>
-                    </div>
-                    <div className=''>
-                    <ChevronRight />
-                    </div>
-                    </div>
-                    
-                  </button>
-                );
-              })}
-            </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-5">
+                {categories.map((category) => {
+                  const ListingIcon = category.icon;
+                  return (
+                    <button
+                      key={category.name}
+                      onClick={() => setActiveTab(category.name)}
+                      className={`flex flex-col items-center justify-center cursor-pointer px-2 lg:px-6 py-3 rounded-2xl transition-all ${activeTab === category.name
+                          ? 'bg-primary cursor-pointer text-white shadow-lg transform scale-105'
+                          : ' bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                    >
+                      <div className='flex flex-row items-between gap-3 lg:gap-5'>
+                        <div className='flex flex-col items-start'>
+                          <span className="font-medium text-md md:text-lg">{category.name}</span>
+                          <span className="text-sm opacity-75">{category.count} listings</span>
+                        </div>
+                        <div className=''>
+                          <ChevronRight />
+                        </div>
+                      </div>
+
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
           <div className="py-10 px-1">
             <div className='flex flex-wrap justify-between px-3 mx-auto'>
-            <Carousel className='overflow-hidden'>
-              <CarouselContent>
-                {subCategories[activeTab as keyof typeof subCategories].map((subcat) => (
-                  <CarouselItem key={subcat} className="basis-auto ">
-                    <Button
-                      onClick={() => setActiveSubcategory(subcat)}
-                      variant={activeSubcategory === subcat ? "default" : "outline"}
-                      className="whitespace-nowrap"
-                    >
-                      {subcat}
-                    </Button>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious />
-              <CarouselNext />
-            </Carousel>
-            <div className="text-right mt-2">
-              <Link href={`/${activeTab.toLowerCase()}`} className="text-primary hover:underline flex items-center">
-                See More <ChevronRight className='ml-2 h-5 w-5' />
-              </Link>
-            </div>
+              <Carousel className='overflow-hidden'>
+                <CarouselContent>
+                  {subCategories[activeTab as keyof typeof subCategories].map((subcat) => (
+                    <CarouselItem key={subcat} className="basis-auto ">
+                      <Button
+                        onClick={() => setActiveSubcategory(subcat)}
+                        variant={activeSubcategory === subcat ? "default" : "outline"}
+                        className="whitespace-nowrap"
+                      >
+                        {subcat}
+                      </Button>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
+              <div className="text-right mt-2">
+                <Link href={`/${activeTab.toLowerCase()}`} className="text-primary hover:underline flex items-center">
+                  See More <ChevronRight className='ml-2 h-5 w-5' />
+                </Link>
+              </div>
             </div>
 
             <Carousel
-            opts={{
-              align: "start",
-              loop: true,
-              slidesToScroll: 1,
-              containScroll: "trimSnaps",
-            }}
+              opts={{
+                align: "start",
+                loop: true,
+                slidesToScroll: 1,
+                containScroll: "trimSnaps",
+              }}
 
-            plugins={[
-              Autoplay({
-                delay: 2000,
-              }),
-            ]}
-            
-            className='mt-6 overflow-hidden relative'>
+              plugins={[
+                Autoplay({
+                  delay: 2000,
+                }),
+              ]}
+
+              className='mt-6 overflow-hidden relative'>
               <CarouselContent className="-ml-2 md:-ml-4">
                 {listings.map((listing) => (
                   <CarouselItem key={listing.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
@@ -504,28 +540,28 @@ const HomePage: React.FC = () => {
                 ))}
               </CarouselContent>
               <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
-            <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+              <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
             </Carousel>
           </div>
 
           {/* Popular Services Section */}
           <section className="mt-16">
             <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Popular Services</h2>
-            <Carousel 
-            opts={{
-              align: "start",
-              loop: true,
-              slidesToScroll: 1,
-              containScroll: "trimSnaps",
-            }}
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+                slidesToScroll: 1,
+                containScroll: "trimSnaps",
+              }}
 
-            plugins={[
-              Autoplay({
-                delay: 5000,
-              }),
-            ]}
-            
-            className='overflow-hidden'>
+              plugins={[
+                Autoplay({
+                  delay: 5000,
+                }),
+              ]}
+
+              className='overflow-hidden'>
               <CarouselContent>
                 {popularServices.map((service) => (
                   <CarouselItem key={service.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
@@ -534,41 +570,146 @@ const HomePage: React.FC = () => {
                 ))}
               </CarouselContent>
               <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
-            <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+              <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
             </Carousel>
           </section>
 
+          {/* Services Ad Banners */}
+          <section className='mt-16'>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <Card className="bg-green-100 dark:bg-green-900">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <CardTitle className="text-2xl font-bold text-green-800 dark:text-green-200">Boost Your Business</CardTitle>
+                    <Briefcase className="text-green-500" size={32} />
+                  </div>
+                  <p className="text-green-700 dark:text-green-300 mb-4">Elevate your service offerings with our premium tools and exposure!</p>
+                  <ul className="list-disc list-inside text-green-600 dark:text-green-400 mb-4">
+                    <li>Featured placement in search results</li>
+                    <li>Customizable service packages</li>
+                    <li>Advanced analytics dashboard</li>
+                  </ul>
+                  <Button className="bg-green-500 hover:bg-green-600 text-white">Upgrade Your Profile</Button>
+                </CardContent>
+              </Card>
 
-          {/* Benefits Section */}
-          <section className="p-2 lg:p-10 mt-10">
-            <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Why List With Us?</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Reach More Customers</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>Get exposed to a wide audience actively looking for services, events, stays, and experiences.</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Easy Management</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>Manage your listings, bookings, and customer interactions all in one place.</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Grow Your Business</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>Increase your visibility and revenue with our powerful platform and marketing tools.</p>
+              <Card className="bg-orange-100 dark:bg-orange-900 overflow-hidden">
+                <CardContent className="p-6 relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <CardTitle className="text-2xl font-bold text-orange-800 dark:text-orange-200">Instant Connections</CardTitle>
+                    <Zap className="text-yellow-500" size={32} />
+                  </div>
+                  <p className="text-orange-700 dark:text-orange-300 mb-4">Connect with clients instantly! Our new feature matches your skills with real-time service requests.</p>
+                  <Button className="bg-orange-500 hover:bg-orange-600 text-white">Start Matching Now</Button>
+                  <img 
+                    src="/images/love.jpg" 
+                    alt="People connecting" 
+                    className="absolute -right-20 -bottom-20 w-2/3 h-2/3 object-cover rounded-full"
+                  />
                 </CardContent>
               </Card>
             </div>
           </section>
+
+          {/* Business Services Section */}
+          <section className="mt-16">
+            <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Business Services</h2>
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+                slidesToScroll: 1,
+                containScroll: "trimSnaps",
+              }}
+              plugins={[
+                Autoplay({
+                  delay: 5000,
+                }),
+              ]}
+              className='overflow-hidden'
+            >
+              <CarouselContent>
+                {businessServices.map((service) => (
+                  <CarouselItem key={service.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                    {renderCard(service)}
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+              <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+            </Carousel>
+          </section>
+
+          {/* Stays Ad Banners */}
+          <section className='mt-16'>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <Card className="bg-blue-100 dark:bg-blue-900 overflow-hidden">
+                <CardContent className="p-6 relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <CardTitle className="text-2xl font-bold text-blue-800 dark:text-blue-200">Escape to Paradise</CardTitle>
+                    <Sunrise className="text-yellow-500" size={32} />
+                  </div>
+                  <p className="text-blue-700 dark:text-blue-300 mb-4">Discover hidden gems and luxurious retreats. Book now and get 20% off on stays of 3 nights or more!</p>
+                  <Button className="bg-blue-500 hover:bg-blue-600 text-white">
+                    <Link href='/stays'>
+                      Explore Dreamy Stays
+                    </Link>
+                  </Button>
+                  <img 
+                    src="/images/stays.jpg" 
+                    alt="Luxurious beach resort" 
+                    className="absolute -right-20 -bottom-20 w-2/3 h-2/3 object-cover rounded-full"
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="bg-purple-100 dark:bg-purple-900">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <CardTitle className="text-2xl font-bold text-purple-800 dark:text-purple-200">Urban Adventures Await</CardTitle>
+                    <Coffee className="text-purple-500" size={32} />
+                  </div>
+                  <p className="text-purple-700 dark:text-purple-300 mb-4">Experience the pulse of city life with our curated selection of downtown stays. Enjoy exclusive perks and local insights!</p>
+                  <ul className="list-disc list-inside text-purple-600 dark:text-purple-400 mb-4">
+                    <li>Complimentary welcome drinks</li>
+                    <li>Access to premium city tours</li>
+                    <li>24/7 concierge service</li>
+                  </ul>
+                  <Button className="bg-purple-500 hover:bg-purple-600 text-white">Discover City Escapes</Button>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
+          {/* Popular Stays Section */}
+          <section className="mt-16">
+            <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">Popular Stays</h2>
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+                slidesToScroll: 1,
+                containScroll: "trimSnaps",
+              }}
+              plugins={[
+                Autoplay({
+                  delay: 5000,
+                }),
+              ]}
+              className='overflow-hidden'
+            >
+              <CarouselContent>
+                {popularStays.map((stay) => (
+                  <CarouselItem key={stay.id} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
+                    {renderCard(stay)}
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+              <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+            </Carousel>
+          </section>
+
 
           {/* Partners Section */}
           <section className="flex-grow">

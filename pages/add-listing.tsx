@@ -368,6 +368,22 @@ const AddListingForm = () => {
   }
 
   const handleNextStep = () => {
+    if (step === steps.findIndex(s => s.title === 'Basic Details')) {
+      if (!formData.title.trim()) {
+        toast.error('Please enter a title before proceeding.');
+        return;
+      }
+      if (!formData.description.trim()) {
+        toast.error('Please enter a description before proceeding.');
+        return;
+      }
+    }
+    if (step === steps.findIndex(s => s.title === 'Gallery')) {
+      if (formData.images.length === 0) {
+        toast.error('Please add at least one image before proceeding.');
+        return;
+      }
+    }
     if (step < steps.length - 1) {
       setStep(step + 1);
     }
@@ -430,20 +446,34 @@ const AddListingForm = () => {
         <CardTitle>Basic Details</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Input
-          name="title"
-          placeholder="Title"
-          value={formData.title}
-          onChange={handleInputChange}
-          required
-        />
-        <Textarea
-          name="description"
-          placeholder="Description"
-          value={formData.description}
-          onChange={handleInputChange}
-          required
-        />
+        <div>
+          <Label htmlFor="title">Title (Required)</Label>
+          <Input
+            id="title"
+            name="title"
+            placeholder="Enter title"
+            value={formData.title}
+            onChange={handleInputChange}
+            required
+          />
+          {!formData.title.trim() && (
+            <p className="text-red-500 text-sm mt-1">Title is required</p>
+          )}
+        </div>
+        <div>
+          <Label htmlFor="description">Description (Required)</Label>
+          <Textarea
+            id="description"
+            name="description"
+            placeholder="Enter description"
+            value={formData.description}
+            onChange={handleInputChange}
+            required
+          />
+          {!formData.description.trim() && (
+            <p className="text-red-500 text-sm mt-1">Description is required</p>
+          )}
+        </div>
         <Input
           name="videoLink"
           placeholder="Video Link"
@@ -624,7 +654,7 @@ const AddListingForm = () => {
   const renderGallery = () => (
     <Card className="mb-4">
       <CardHeader>
-        <CardTitle>Gallery</CardTitle>
+        <CardTitle>Gallery (Required)</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div {...getRootProps()} className="border-2 border-dashed border-gray-300 p-4 text-center cursor-pointer">
@@ -646,7 +676,7 @@ const AddListingForm = () => {
         >
           Choose Files
         </Button>
-        {formData.images.length > 0 && (
+        {formData.images.length > 0 ? (
           <div>
             <Label>Select Featured Image</Label>
             <div className="grid grid-cols-3 gap-2">
@@ -672,6 +702,8 @@ const AddListingForm = () => {
               ))}
             </div>
           </div>
+        ) : (
+          <p className="text-red-500">Please add at least one image (required)</p>
         )}
       </CardContent>
     </Card>
