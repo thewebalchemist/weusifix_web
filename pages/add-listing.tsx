@@ -499,14 +499,17 @@ const AddListingForm = () => {
               <SelectItem value="Auto Detailer">Auto Detailer</SelectItem>
               <SelectItem value="Auto Mechanic">Auto Mechanic</SelectItem>
               <SelectItem value="Barber">Barber</SelectItem>
+              <SelectItem value="Baker">Baker</SelectItem>
               <SelectItem value="Barista">Barista</SelectItem>
               <SelectItem value="Builder">Builder</SelectItem>
               <SelectItem value="Car Wash">Car Wash</SelectItem>
               <SelectItem value="Carpenter">Carpenter</SelectItem>
               <SelectItem value="Catering">Catering</SelectItem>
+              <SelectItem value="Chef">Chef</SelectItem>
               <SelectItem value="Computer Repair">Computer Repair</SelectItem>
               <SelectItem value="Contractors">Contractors</SelectItem>
               <SelectItem value="Cook">Cook</SelectItem>
+              <SelectItem value="Courier Services">Courier Services</SelectItem>
               <SelectItem value="Dishwasher">Dishwasher</SelectItem>
               <SelectItem value="DJ">DJ</SelectItem>
               <SelectItem value="Dryer Repair">Dryer Repair</SelectItem>
@@ -521,6 +524,7 @@ const AddListingForm = () => {
               <SelectItem value="HVAC Repair">HVAC Repair</SelectItem>
               <SelectItem value="Janitor">Janitor</SelectItem>
               <SelectItem value="Landscaper">Landscaper</SelectItem>
+              <SelectItem value="Landscaper">Laundry</SelectItem>
               <SelectItem value="Locksmith">Locksmith</SelectItem>
               <SelectItem value="Makeup Artist">Makeup Artist</SelectItem>
               <SelectItem value="Masseuse">Masseuse</SelectItem>
@@ -1275,11 +1279,11 @@ const AddListingForm = () => {
   ];
 
   if (listingType === 'event') {
-    steps.splice(5, 0, { title: 'Event Details', component: renderEventFields });
+    steps.splice(2, 0, { title: 'Event Details', component: renderEventFields });
   } else if (listingType === 'stay') {
-    steps.splice(5, 0, { title: 'Stay Details', component: renderStayFields });
+    steps.splice(2, 0, { title: 'Stay Details', component: renderStayFields });
   } else if (listingType === 'experience') {
-    steps.splice(5, 0, { title: 'Experience Details', component: renderExperienceFields });
+    steps.splice(2, 0, { title: 'Experience Details', component: renderExperienceFields });
   }
 
   return (

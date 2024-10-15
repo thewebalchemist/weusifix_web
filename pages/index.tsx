@@ -419,7 +419,7 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-900">
+    <div className="bg-gray-100 dark:bg-black">
       <main>
         <div className="max-w-6xl mx-auto py-20 lg:py-36 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">

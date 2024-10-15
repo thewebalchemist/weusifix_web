@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { BadgeCheck, Heart } from 'lucide-react';
+import { BadgeCheck, Clock, Heart } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -20,7 +20,8 @@ interface Event {
   slug: string;
   event_date: string;
   category: string;
-  event_pricing: number;
+  event_pricing: Array<{ type: string; price: number }>;
+  price_currency: string;
 }
 
 const EventsPage: React.FC = () => {
@@ -114,22 +115,23 @@ const EventsPage: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <h2 className='text-gray-800 dark:text-white'>{listing.title.substring(0, 25)}</h2>
-                  <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.address}</p>
-                  <span className='text-sm text-gray-800 dark:text-gray-100'>
-                    From
-                    <span className='font-bold'> ${listing.event_pricing}/</span> ticket
-                  </span>
-                </div>
+                <h2 className='text-gray-800 dark:text-white'>{listing.title.substring(0, 25)}</h2>
+                <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.address}</p>
+                <span className='text-sm text-gray-800 dark:text-gray-100'>
+                  From
+                  <span className='font-bold'> {listing.price_currency} {Math.min(...listing.event_pricing.map(ticket => Number(ticket.price)))}/</span> ticket
+                </span>
               </div>
-              <div className="mx-2 px-3 py-2 text-center text-md text-white rounded-xl bg-red-400">
-                {listing.event_date && new Date(listing.event_date) > new Date() ? 'Coming Soon' : 'Event Passed'}
+              </div>
+              <div className="flex justify-center items-center gap-2 mx-2 px-3 py-2 text-center text-md text-white rounded-xl bg-red-500">
+                <Clock />
+              {calculateTimeLeft(listing.event_date)}
               </div>
               <div className="p-2">
-                <div className='flex justify-between space-x-4'>
-                  <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-300'><Heart /></span>
-                  <button className="hover:bg-transparent border border-white hover:border-primary bg-primary hover:text-primary w-full py-2 rounded-2xl">Book Now</button>
-                </div>
+              <div className='flex justify-between space-x-4'>
+                    <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart /></span>
+                    <button className="bg-primary hover:bg-transparent border border-primary hover:text-primary text-white w-full py-2 rounded-2xl">View Details</button>
+              </div>
               </div>
             </div>
           </Link>

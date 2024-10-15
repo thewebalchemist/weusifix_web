@@ -146,6 +146,7 @@ const ServiceListing = ({ service }) => {
                   </Avatar>
                   <div>
                   <h3 className="text-md lg:text-lg font-semibold">{service.listing_user_details.name}</h3>
+                  <h3 className="text-sm font-semibold">{service.listing_user_details.phoneNumber}</h3>
                     <h3 className="text-sm font-semibold">{service.listing_user_details.email}</h3>
                     <p className="text-sm text-gray-500">{service.isIndividual ? 'Individual' : 'Business'}</p>
                   </div>
@@ -154,7 +155,7 @@ const ServiceListing = ({ service }) => {
                 <div className="flex space-x-2 mb-4"><Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `tel:${service.listing_user_details.email}`}
+                    onClick={() => window.location.href = `tel:${service.listing_user_details.phoneNumber}`}
                   >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
                   </Button>
@@ -162,7 +163,7 @@ const ServiceListing = ({ service }) => {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `mailto:${service.listing_user_details.phoneNumber}`}
+                    onClick={() => window.location.href = `mailto:${service.listing_user_details.email}`}
                   >
                     <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
@@ -277,7 +278,7 @@ const EventListing = ({ event }) => {
                 <div className="flex space-x-2 mb-4"><Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `tel:${event.listing_user_details.email}`}
+                    onClick={() => window.location.href = `tel:${event.listing_user_details.phoneNumber}`}
                   >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
                   </Button>
@@ -285,7 +286,7 @@ const EventListing = ({ event }) => {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `mailto:${event.listing_user_details.phone}`}
+                    onClick={() => window.location.href = `mailto:${event.listing_user_details.email}`}
                   >
                     <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
@@ -326,7 +327,6 @@ const EventListing = ({ event }) => {
                   {event.event_pricing.map((pricing, index) => (
                     <p key={index} className="text-2xl font-bold">{event.price_currency} {pricing.price} - {pricing.type}</p>
                   ))}
-                  <Button className="w-full">Buy Tickets</Button>
                 </div>
               </CardContent>
             </Card>
@@ -433,7 +433,7 @@ const StayListing = ({ stay }) => {
                 <div className="flex space-x-2 mb-4"><Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `tel:${stay.listing_user_details.email}`}
+                    onClick={() => window.location.href = `tel:${stay.listing_user_details.phoneNumber}`}
                   >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
                   </Button>
@@ -441,7 +441,7 @@ const StayListing = ({ stay }) => {
                   <Button 
                     variant="outline" 
                     className="flex-1"
-                    onClick={() => window.location.href = `mailto:${stay.listing_user_details.phone}`}
+                    onClick={() => window.location.href = `mailto:${stay.listing_user_details.email}`}
                   >
                     <Mail className="mr-2 h-4 w-4" /> Message
                   </Button>
@@ -534,15 +534,15 @@ const ExperienceListing = ({ experience }) => {
                   </div>
                 )}
               </TabsContent>
-              <TabsContent value="itinerary">
+              {/* <TabsContent value="itinerary">
                 {experience.itinerary.map((item, index) => (
                   <div key={index} className="mb-4 p-5 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-3xl">
                     <h3 className="font-semibold">{item.time}</h3>
                     <p>{item.activity}</p>
                   </div>
                 ))}
-              </TabsContent>
-              <TabsContent value="reviews">
+              </TabsContent> */}
+              {/* <TabsContent value="reviews">
                 {experience.reviews.map((review, index) => (
                   <div key={index} className="mb-4 p-5 bg-white dark:bg-black text-gray-800 dark:text-gray-300 rounded-3xl">
                     <div className="flex items-center mb-2">
@@ -558,7 +558,7 @@ const ExperienceListing = ({ experience }) => {
                     <p className="text-gray-700 dark:text-gray-300">{review.comment}</p>
                   </div>
                 ))}
-              </TabsContent>
+              </TabsContent> */}
             </Tabs>
           </div>
           <div className="lg:w-1/3">
@@ -589,14 +589,14 @@ const ExperienceListing = ({ experience }) => {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 mb-4">{experience.listing_user_details.bio}</p>
-                <div className="flex space-x-2 mb-4">
-                  <Button 
+                <div className="flex space-x-2 mb-4"><Button 
                     variant="outline" 
                     className="flex-1"
                     onClick={() => window.location.href = `tel:${experience.listing_user_details.phoneNumber}`}
                   >
                     <PhoneCall className="mr-2 h-4 w-4" /> Call
                   </Button>
+
                   <Button 
                     variant="outline" 
                     className="flex-1"
@@ -624,8 +624,34 @@ const ExperienceListing = ({ experience }) => {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Experience Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <Clock className="w-5 h-5 mr-2 text-gray-500" />
+                    <span>Duration: {experience.duration}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Users className="w-5 h-5 mr-2 text-gray-500" />
+                    <span>Max Group Size: {experience.group_size} people</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-2">Pricing:</h3>
+                    <ul className="list-disc list-inside">
+                      {Object.entries(experience.experience_pricing).map(([type, price]) => (
+                        <li key={type}>{type}: {experience.price_currency} {price}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             
-            <Card>
+            <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Book this Experience</CardTitle>
               </CardHeader>
@@ -654,31 +680,7 @@ const ExperienceListing = ({ experience }) => {
                 </Button>
               </CardContent>
             </Card>
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Experience Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <Clock className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>Duration: {experience.duration}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Users className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>Max Group Size: {experience.group_size} people</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Pricing:</h3>
-                    <ul className="list-disc list-inside">
-                      {Object.entries(experience.experience_pricing).map(([type, price]) => (
-                        <li key={type}>{type}: {experience.price_currency} {price}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            
           </div>
         </div>
       </div>

@@ -19,7 +19,14 @@ interface Experience {
   price: number;
   slug: string;
   category: string;
-  experience_pricing: number;
+  experience_pricing: {
+    adults: number;
+    children: number;
+    teens: number;
+    groups: number;
+    families: number;
+  };
+  price_currency: string;
 }
 
 const ExperiencesPage: React.FC = () => {
@@ -91,7 +98,7 @@ const ExperiencesPage: React.FC = () => {
                 <h2 className="text-white text-lg font-semibold mb-1">{listing.title.substring(0, 25)}</h2>
                 <p className="mb-2 text-gray-200 text-sm">{listing.address}</p>
                 <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
-                  <span className="font-bold">${listing.experience_pricing}/</span> person
+                  From <span className="font-bold">{listing.price_currency} {Math.min(...Object.values(listing.experience_pricing).map(Number))}/</span> person
                 </span>
               </div>
             </div>

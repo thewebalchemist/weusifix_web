@@ -78,7 +78,7 @@ const ServicesPage: React.FC = () => {
 
   const renderCard = (listing: Listing) => (
     <Link href={`/services/${listing.slug}`} key={listing.id}>
-            <div className="relative rounded-2xl bg-white dark:bg-gray-800 cursor-pointer">
+            <div className="relative rounded-2xl bg-white dark:bg-black cursor-pointer">
               <div className="p-2">
                 <div className="relative">
                   <img src={listing.images[0]} alt={listing.title} className="w-full h-48 object-cover rounded-2xl" />
