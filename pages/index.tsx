@@ -630,12 +630,12 @@ const HomePage: React.FC = () => {
 
                 <CarouselItem className="basis-full">
                   <Card className="bg-orange-100 dark:bg-orange-900 overflow-hidden">
-                    <CardContent className="p-6 flex space-x-4 lg:space-x-10 justify-center">
+                    <CardContent className="p-6 flex md:flex-row flex-col space-y-2 md:space-x-10 justify-center">
                       <div>
                         <img
                           src="/images/love.jpg"
                           alt="People connecting"
-                          className="h-48 w-48 object-cover rounded-3xl"
+                          className="h-32 w-32 md:h-48 md:w-48 object-cover rounded-3xl"
                         />
                       </div>
 
@@ -650,12 +650,12 @@ const HomePage: React.FC = () => {
                 </CarouselItem>
                 <CarouselItem className="basis-full">
                   <Card className="bg-blue-100 dark:bg-blue-900 overflow-hidden">
-                    <CardContent className="p-6 flex space-x-4 lg:space-x-10 justify-center">
+                    <CardContent className="p-6 flex md:flex-row flex-col space-y-2 md:space-x-10 justify-center">
                       <div>
                         <img
                           src="/images/stays.jpg"
                           alt="People connecting"
-                          className="h-48 w-48 object-cover rounded-3xl"
+                          className="h-32 w-32 md:h-48 md:w-48 object-cover rounded-3xl"
                         />
                       </div>
                       <div className="space-y-3 items-center justify-center">
@@ -725,12 +725,12 @@ const HomePage: React.FC = () => {
               <CarouselContent>
               <CarouselItem className="basis-full">
                   <Card className="bg-blue-100 dark:bg-blue-900 overflow-hidden">
-                    <CardContent className="p-6 flex space-x-4 lg:space-x-10 justify-center">
+                    <CardContent className="p-6 flex md:flex-row flex-col space-y-2 md:space-x-10 justify-center">
                       <div>
                         <img
                           src="/images/stays.jpg"
                           alt="People connecting"
-                          className="h-48 w-48 object-cover rounded-3xl"
+                          className="h-32 w-32 md:h-48 md:w-48 object-cover rounded-3xl"
                         />
                       </div>
                       <div className="space-y-3 items-center justify-center">
@@ -749,12 +749,12 @@ const HomePage: React.FC = () => {
 
                 <CarouselItem className="basis-full">
                   <Card className="bg-orange-100 dark:bg-orange-900 overflow-hidden">
-                    <CardContent className="p-6 flex space-x-4 lg:space-x-10 justify-center">
+                    <CardContent className="p-6 flex md:flex-row flex-col space-y-2 md:space-x-10 justify-center">
                       <div>
                         <img
                           src="/images/love.jpg"
                           alt="People connecting"
-                          className="h-48 w-48 object-cover rounded-3xl"
+                          className="h-32 w-32 md:h-48 md:w-48 object-cover rounded-3xl"
                         />
                       </div>
 
