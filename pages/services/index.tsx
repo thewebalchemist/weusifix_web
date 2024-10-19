@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Badge, BadgeCheck, Heart, MapPin } from 'lucide-react';
+import { Badge, BadgeCheck, Briefcase, Heart, MapPin, Zap } from 'lucide-react';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 
 interface Listing {
   id: string;
@@ -118,7 +119,42 @@ const ServicesPage: React.FC = () => {
     <div className="py-28 lg:py-32 mx-auto lg:max-w-6xl py-8 px-4">
       <h1 className="text-4xl font-bold mb-8 text-center">Services</h1>
       
-      {/*  */}
+      {/* Services Ad Banners */}
+      <section className='mt-16'>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <Card className="bg-green-100 dark:bg-green-900">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <CardTitle className="text-2xl font-bold text-green-800 dark:text-green-200">Boost Your Business</CardTitle>
+                    <Briefcase className="text-green-500" size={32} />
+                  </div>
+                  <p className="text-green-700 dark:text-green-300 mb-4">Elevate your service offerings with our premium tools and exposure!</p>
+                  <ul className="list-disc list-inside text-green-600 dark:text-green-400 mb-4">
+                    <li>Featured placement in search results</li>
+                    <li>Customizable service packages</li>
+                    <li>Advanced analytics dashboard</li>
+                  </ul>
+                  <Button className="bg-green-500 hover:bg-green-600 text-white">Upgrade Your Profile</Button>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-orange-100 dark:bg-orange-900 overflow-hidden">
+                <CardContent className="p-6 relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <CardTitle className="text-2xl font-bold text-orange-800 dark:text-orange-200">Instant Connections</CardTitle>
+                    <Zap className="text-yellow-500" size={32} />
+                  </div>
+                  <p className="text-orange-700 dark:text-orange-300 mb-4">Connect with clients instantly! Our new feature matches your skills with real-time service requests.</p>
+                  <Button className="bg-orange-500 hover:bg-orange-600 text-white">Start Matching Now</Button>
+                  <img
+                    src="/images/love.jpg"
+                    alt="People connecting"
+                    className="absolute -right-20 -bottom-20 w-2/3 h-2/3 object-cover rounded-full"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </section>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {listings.map((listing) => renderCard(listing))}

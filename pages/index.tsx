@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { Search, ChevronRight, BadgeCheck, Heart, UsersRound, BedDouble, Bed, ShowerHead, MapPin, Star, AlertCircle, Coffee, Sunrise, Zap, Briefcase } from 'lucide-react';
+import { Search, ChevronRight, BadgeCheck, Heart, UsersRound, BedDouble, Bed, ShowerHead, MapPin, Star, AlertCircle, Coffee, Sunrise, Zap, Briefcase, Clock } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,14 @@ interface Listing {
   price: number;
   price_currency: string;
   stay_price: number;
-  event_pricing: number;
-  experience_pricing: number;
+  event_pricing: Array<{ type: string; price: number }>;
+  experience_pricing: {
+    adults: number;
+    children: number;
+    teens: number;
+    groups: number;
+    families: number;
+  };
   images: string[];
   amenities?: string[];
   event_date?: string;
@@ -149,6 +155,32 @@ const HomePage: React.FC = () => {
   const handleShowMore = () => {
     setPage(prevPage => prevPage + 1);
   };
+
+  const calculateTimeLeft = (eventDate: string) => {
+    const difference = +new Date(eventDate) - +new Date();
+    let timeLeft = '';
+
+    if (difference > 0) {
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((difference / 1000 / 60) % 60);
+
+      if (days > 0) {
+        timeLeft = `${days} days left`;
+      } else if (hours > 0) {
+        timeLeft = `${hours} hours left`;
+      } else if (minutes > 0) {
+        timeLeft = `${minutes} minutes left`;
+      } else {
+        timeLeft = 'Starting soon';
+      }
+    } else {
+      timeLeft = 'Event ended';
+    }
+
+    return timeLeft;
+  };
+
 
 
   const handleSearch = (e: React.FormEvent) => {
@@ -364,22 +396,23 @@ const HomePage: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <h2 className='text-gray-800 dark:text-white'>{listing.title.substring(0, 25)}</h2>
-                  <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.address}</p>
-                  <span className='text-sm text-gray-800 dark:text-gray-100'>
-                    From
-                    <span className='font-bold'>{listing.price_currency} {listing.event_pricing}/</span> ticket
-                  </span>
-                </div>
+                <h2 className='text-gray-800 dark:text-white'>{listing.title.substring(0, 25)}</h2>
+                <p className='text-gray-400 dark:text-gray-600 text-sm'>{listing.address}</p>
+                <span className='text-sm text-gray-800 dark:text-gray-100'>
+                  From
+                  <span className='font-bold'> {listing.price_currency} {Math.min(...listing.event_pricing.map(ticket => Number(ticket.price)))}/</span> ticket
+                </span>
               </div>
-              <div className="mx-2 px-3 py-2 text-center text-md text-white rounded-xl bg-red-400">
-                {listing.event_date && new Date(listing.event_date) > new Date() ? 'Coming Soon' : 'Event Passed'}
+              </div>
+              <div className="flex justify-center items-center gap-2 mx-2 px-3 py-2 text-center text-md text-white rounded-xl bg-red-500">
+                <Clock />
+              {calculateTimeLeft(listing.event_date)}
               </div>
               <div className="p-2">
-                <div className='flex justify-between space-x-4'>
-                  <span className='flex items-center cursor-pointer text-white rounded-full p-2 bg-gray-300'><Heart /></span>
-                  <button className="hover:bg-transparent border border-white hover:border-primary bg-primary hover:text-primary w-full py-2 rounded-2xl">Book Now</button>
-                </div>
+              <div className='flex justify-between space-x-4'>
+                    <span className='flex items-center cursor-pointer text-gray-700 dark:text-white rounded-full p-2 bg-gray-200 dark:bg-gray-600'><Heart /></span>
+                    <button className="bg-primary hover:bg-transparent border border-primary hover:text-primary text-white w-full py-2 rounded-2xl">View Details</button>
+              </div>
               </div>
             </div>
           </Link>
@@ -407,7 +440,7 @@ const HomePage: React.FC = () => {
                 <h2 className="text-white text-lg font-semibold mb-1">{listing.title.substring(0, 25)}</h2>
                 <p className="mb-2 text-gray-200 text-sm">{listing.address}</p>
                 <span className="text-sm text-white py-2 px-3 bg-primary bg-opacity-50 rounded-full">
-                  <span className="font-bold">{listing.price_currency} {listing.experience_pricing}/</span> person
+                  From <span className="font-bold">{listing.price_currency} {Math.min(...Object.values(listing.experience_pricing).map(Number))}/</span> person
                 </span>
               </div>
             </div>
@@ -470,8 +503,8 @@ const HomePage: React.FC = () => {
                       key={category.name}
                       onClick={() => setActiveTab(category.name)}
                       className={`flex flex-col items-center justify-center cursor-pointer px-2 lg:px-6 py-3 rounded-2xl transition-all ${activeTab === category.name
-                          ? 'bg-primary cursor-pointer text-white shadow-lg transform scale-105'
-                          : ' bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        ? 'bg-primary cursor-pointer text-white shadow-lg transform scale-105'
+                        : ' bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                         }`}
                     >
                       <div className='flex flex-row items-between gap-3 lg:gap-5'>
@@ -574,41 +607,74 @@ const HomePage: React.FC = () => {
             </Carousel>
           </section>
 
+          
+
+
           {/* Services Ad Banners */}
           <section className='mt-16'>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              <Card className="bg-green-100 dark:bg-green-900">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <CardTitle className="text-2xl font-bold text-green-800 dark:text-green-200">Boost Your Business</CardTitle>
-                    <Briefcase className="text-green-500" size={32} />
-                  </div>
-                  <p className="text-green-700 dark:text-green-300 mb-4">Elevate your service offerings with our premium tools and exposure!</p>
-                  <ul className="list-disc list-inside text-green-600 dark:text-green-400 mb-4">
-                    <li>Featured placement in search results</li>
-                    <li>Customizable service packages</li>
-                    <li>Advanced analytics dashboard</li>
-                  </ul>
-                  <Button className="bg-green-500 hover:bg-green-600 text-white">Upgrade Your Profile</Button>
-                </CardContent>
-              </Card>
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+                slidesToScroll: 1,
+                containScroll: "trimSnaps",
+              }}
+              plugins={[
+                Autoplay({
+                  delay: 5000,
+                }),
+              ]}
+              className='overflow-hidden'
+            >
+              <CarouselContent>
 
-              <Card className="bg-orange-100 dark:bg-orange-900 overflow-hidden">
-                <CardContent className="p-6 relative">
-                  <div className="flex items-center justify-between mb-4">
-                    <CardTitle className="text-2xl font-bold text-orange-800 dark:text-orange-200">Instant Connections</CardTitle>
-                    <Zap className="text-yellow-500" size={32} />
-                  </div>
-                  <p className="text-orange-700 dark:text-orange-300 mb-4">Connect with clients instantly! Our new feature matches your skills with real-time service requests.</p>
-                  <Button className="bg-orange-500 hover:bg-orange-600 text-white">Start Matching Now</Button>
-                  <img 
-                    src="/images/love.jpg" 
-                    alt="People connecting" 
-                    className="absolute -right-20 -bottom-20 w-2/3 h-2/3 object-cover rounded-full"
-                  />
-                </CardContent>
-              </Card>
-            </div>
+                <CarouselItem className="basis-full">
+                  <Card className="bg-orange-100 dark:bg-orange-900 overflow-hidden">
+                    <CardContent className="p-6 flex space-x-4 lg:space-x-10 justify-center">
+                      <div>
+                        <img
+                          src="/images/love.jpg"
+                          alt="People connecting"
+                          className="h-48 w-48 object-cover rounded-3xl"
+                        />
+                      </div>
+
+                      <div className='space-y-3 items-center justify-center'>
+                        <Zap className="text-yellow-500" size={32} />
+                        <CardTitle className="text-2xl font-bold text-orange-800 dark:text-orange-200">Instant Connections</CardTitle>
+                        <p className="text-orange-700 dark:text-orange-300 mb-4">Connect with clients instantly! Our new feature matches your skills with real-time service requests.</p>
+                        <Button className="bg-orange-500 hover:bg-orange-600 text-white">Start Matching Now</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+                <CarouselItem className="basis-full">
+                  <Card className="bg-blue-100 dark:bg-blue-900 overflow-hidden">
+                    <CardContent className="p-6 flex space-x-4 lg:space-x-10 justify-center">
+                      <div>
+                        <img
+                          src="/images/stays.jpg"
+                          alt="People connecting"
+                          className="h-48 w-48 object-cover rounded-3xl"
+                        />
+                      </div>
+                      <div className="space-y-3 items-center justify-center">
+                        <Sunrise className="text-yellow-500" size={32} />
+                        <CardTitle className="text-2xl font-bold text-blue-800 dark:text-blue-200">Escape to Paradise</CardTitle>
+                        <p className="text-blue-700 dark:text-blue-300 mb-4">Discover hidden gems and luxurious retreats. Book now and get 20% off on stays of 3 nights or more!</p>
+                        <Button className="bg-blue-500 hover:bg-blue-600 text-white">
+                          <Link href='/stays'>
+                            Explore Dreamy Stays
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+              </CarouselContent>
+              <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+              <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+            </Carousel>
           </section>
 
           {/* Business Services Section */}
@@ -640,6 +706,74 @@ const HomePage: React.FC = () => {
             </Carousel>
           </section>
 
+          {/* Services Ad Banners */}
+          <section className='mt-16'>
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+                slidesToScroll: 1,
+                containScroll: "trimSnaps",
+              }}
+              plugins={[
+                Autoplay({
+                  delay: 5000,
+                }),
+              ]}
+              className='overflow-hidden'
+            >
+              <CarouselContent>
+              <CarouselItem className="basis-full">
+                  <Card className="bg-blue-100 dark:bg-blue-900 overflow-hidden">
+                    <CardContent className="p-6 flex space-x-4 lg:space-x-10 justify-center">
+                      <div>
+                        <img
+                          src="/images/stays.jpg"
+                          alt="People connecting"
+                          className="h-48 w-48 object-cover rounded-3xl"
+                        />
+                      </div>
+                      <div className="space-y-3 items-center justify-center">
+                        <Sunrise className="text-yellow-500" size={32} />
+                        <CardTitle className="text-2xl font-bold text-blue-800 dark:text-blue-200">Escape to Paradise</CardTitle>
+                        <p className="text-blue-700 dark:text-blue-300 mb-4">Discover hidden gems and luxurious retreats. Book now and get 20% off on stays of 3 nights or more!</p>
+                        <Button className="bg-blue-500 hover:bg-blue-600 text-white">
+                          <Link href='/stays'>
+                            Explore Dreamy Stays
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+
+                <CarouselItem className="basis-full">
+                  <Card className="bg-orange-100 dark:bg-orange-900 overflow-hidden">
+                    <CardContent className="p-6 flex space-x-4 lg:space-x-10 justify-center">
+                      <div>
+                        <img
+                          src="/images/love.jpg"
+                          alt="People connecting"
+                          className="h-48 w-48 object-cover rounded-3xl"
+                        />
+                      </div>
+
+                      <div className='space-y-3 items-center justify-center'>
+                        <Zap className="text-yellow-500" size={32} />
+                        <CardTitle className="text-2xl font-bold text-orange-800 dark:text-orange-200">Instant Connections</CardTitle>
+                        <p className="text-orange-700 dark:text-orange-300 mb-4">Connect with clients instantly! Our new feature matches your skills with real-time service requests.</p>
+                        <Button className="bg-orange-500 hover:bg-orange-600 text-white">Start Matching Now</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+                
+              </CarouselContent>
+              <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+              <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-md" />
+            </Carousel>
+          </section>
+
           {/* Stays Ad Banners */}
           <section className='mt-16'>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -655,9 +789,9 @@ const HomePage: React.FC = () => {
                       Explore Dreamy Stays
                     </Link>
                   </Button>
-                  <img 
-                    src="/images/stays.jpg" 
-                    alt="Luxurious beach resort" 
+                  <img
+                    src="/images/stays.jpg"
+                    alt="Luxurious beach resort"
                     className="absolute -right-20 -bottom-20 w-2/3 h-2/3 object-cover rounded-full"
                   />
                 </CardContent>

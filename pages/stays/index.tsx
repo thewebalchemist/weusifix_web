@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { BadgeCheck, Heart } from 'lucide-react';
+import { BadgeCheck, Coffee, Heart, Sunrise } from 'lucide-react';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 
 interface Stay {
   id: string;
@@ -117,6 +118,47 @@ const StaysPage: React.FC = () => {
   return (
     <div className="py-28 lg:py-32 mx-auto lg:max-w-6xl py-8 px-4">
       <h1 className="text-4xl font-bold mb-8 text-center">Stays</h1>
+
+      {/* Stays Ad Banners */}
+      <section className='mt-16'>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <Card className="bg-blue-100 dark:bg-blue-900 overflow-hidden">
+                <CardContent className="p-6 relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <CardTitle className="text-2xl font-bold text-blue-800 dark:text-blue-200">Escape to Paradise</CardTitle>
+                    <Sunrise className="text-yellow-500" size={32} />
+                  </div>
+                  <p className="text-blue-700 dark:text-blue-300 mb-4">Discover hidden gems and luxurious retreats. Book now and get 20% off on stays of 3 nights or more!</p>
+                  <Button className="bg-blue-500 hover:bg-blue-600 text-white">
+                    <Link href='/stays'>
+                      Explore Dreamy Stays
+                    </Link>
+                  </Button>
+                  <img
+                    src="/images/stays.jpg"
+                    alt="Luxurious beach resort"
+                    className="absolute -right-20 -bottom-20 w-2/3 h-2/3 object-cover rounded-full"
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="bg-purple-100 dark:bg-purple-900">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <CardTitle className="text-2xl font-bold text-purple-800 dark:text-purple-200">Urban Adventures Await</CardTitle>
+                    <Coffee className="text-purple-500" size={32} />
+                  </div>
+                  <p className="text-purple-700 dark:text-purple-300 mb-4">Experience the pulse of city life with our curated selection of downtown stays. Enjoy exclusive perks and local insights!</p>
+                  <ul className="list-disc list-inside text-purple-600 dark:text-purple-400 mb-4">
+                    <li>Complimentary welcome drinks</li>
+                    <li>Access to premium city tours</li>
+                    <li>24/7 concierge service</li>
+                  </ul>
+                  <Button className="bg-purple-500 hover:bg-purple-600 text-white">Discover City Escapes</Button>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
       
       {/* <form onSubmit={handleSearch} className="mb-8">
         <div className="flex gap-4">

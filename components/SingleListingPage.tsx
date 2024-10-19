@@ -187,7 +187,7 @@ const ServiceListing = ({ service }) => {
                 </div>
               </CardContent>
             </Card>
-            {service.bookingEnabled && (
+            {/* {service.bookingEnabled && (
               <Card>
                 <CardHeader>
                   <CardTitle>Book this Service</CardTitle>
@@ -196,7 +196,7 @@ const ServiceListing = ({ service }) => {
                   <Button className="w-full">Request Booking</Button>
                 </CardContent>
               </Card>
-            )}
+            )} */}
           </div>
         </div>
       </div>
@@ -491,9 +491,9 @@ const StayListing = ({ stay }) => {
                     />
                   </div>
                 </div>
-                <Button className="w-full mt-4" disabled={!stay.booking_enabled}>
+                {/* <Button className="w-full mt-4" disabled={!stay.booking_enabled}>
                   {stay.booking_enabled ? 'Book Now' : 'Booking Unavailable'}
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
           </div>
@@ -675,9 +675,9 @@ const ExperienceListing = ({ experience }) => {
                     />
                   </div>
                 </div>
-                <Button className="w-full mt-4" disabled={!experience.booking_enabled}>
+                {/* <Button className="w-full mt-4" disabled={!experience.booking_enabled}>
                   {experience.booking_enabled ? 'Book Now' : 'Booking Unavailable'}
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
             
